@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+import gi
+gi.require_version('Gtk', '3.0')
+gi.require_version('Notify', '0.7')
+gi.require_version('AppIndicator3', '0.1')
+
 from gi.repository import Gtk as gtk
 from gi.repository import GLib, Gio, GObject, Notify, GdkPixbuf, Gdk
 from gi.repository import AppIndicator3 as appindicator
@@ -17,7 +22,7 @@ class Twitch:
     """Fetch user followed channels and return a list with channel names."""
     try:
       self.followed_channels = []
-      
+
       self.f = urllib.urlopen("https://api.twitch.tv/kraken/users/{0}/follows/channels?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&direction=DESC&limit=100&offset=0&sortby=created_at".format(username))
       self.data = json.loads(self.f.read())
 
@@ -36,7 +41,7 @@ class Twitch:
 
         for channel in self.data['follows']:
           self.followed_channels.append(channel['channel']['name'])
-      
+
       return self.followed_channels
     except IOError:
       return None
@@ -46,12 +51,12 @@ class Twitch:
     try:
       self.channels_count = len(channels)
       self.live_streams = []
-      
+
       self.pages = (self.channels_count - 1) / 75
       for page in range(0, self.pages + 1):
         self.offset = (page * 75) + 75
         if (self.offset % 75 > 0):
-          self.offset = self.channels_count 
+          self.offset = self.channels_count
         self.channels_offset = channels[(page * 75):self.offset]
 
         self.f = urllib.urlopen("https://api.twitch.tv/kraken/streams?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&channel={0}".format(','.join(self.channels_offset)))
@@ -64,11 +69,23 @@ class Twitch:
             self.status = stream['channel']['status']
           except KeyError:
             self.status = ""
-          
+
+          # Show default if channel owner has not set his avatar
+          if (stream['channel']['logo'] == None):
+            self.response = urllib.urlopen("http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png")
+          else:
+            self.response = urllib.urlopen(stream['channel']['logo'])
+          self.loader = GdkPixbuf.PixbufLoader.new()
+          self.loader.set_size(32, 32)
+          self.loader.write(self.response.read())
+          self.loader.close()
+
           st = {
             'name': stream['channel']['display_name'],
+            'game': stream['channel']['game'],
             'status': self.status,
             'image': stream['channel']['logo'],
+            'pixbuf': self.loader,
             'url': "http://www.twitch.tv/%s" % stream['channel']['name']
           }
 
@@ -84,14 +101,8 @@ class Indicator():
   def __init__(self):
     self.timeout_thread = None
 
-    # Setup applet icon depending on DE
-    self.desktop_env = os.environ.get('DESKTOP_SESSION')
-    if self.desktop_env == "pantheon":
-      self.applet_icon = "twitch-elementary"
-    elif self.desktop_env == "mate":
-      self.applet_icon = "twitch-mate"
-    else:
-      self.applet_icon = "twitch-ubuntu"
+    # Setup applet icon
+    self.applet_icon = "twitch-indicator"
 
     # Create applet
     self.a = appindicator.Indicator.new(
@@ -100,6 +111,7 @@ class Indicator():
       appindicator.IndicatorCategory.APPLICATION_STATUS
     )
     self.a.set_status(appindicator.IndicatorStatus.ACTIVE)
+    # TODO: hardcoded paths seem wrong
     self.a.set_icon_theme_path("/usr/lib/twitch-indicator/")
     self.a.set_icon(self.applet_icon)
 
@@ -118,12 +130,12 @@ class Indicator():
     self.menuItems[0].connect('activate', self.refresh_streams_init, [True])
     self.menuItems[-2].connect('activate', self.settings_dialog)
     self.menuItems[-1].connect('activate', self.quit)
-    
+
     for i in self.menuItems:
       self.menu.append(i)
 
     self.a.set_menu(self.menu)
-    
+
     self.menu.show_all()
 
     self.refresh_streams_init(None)
@@ -153,6 +165,7 @@ class Indicator():
     )
 
     self.builder = gtk.Builder()
+    # TODO: hardcoded paths seem wrong
     self.builder.add_from_file("/usr/lib/twitch-indicator/twitch-indicator.glade")
 
     self.builder.get_object("twitch_username").set_text(self.settings.get_string("twitch-username"))
@@ -190,18 +203,22 @@ class Indicator():
       self.menuItems.pop(1)
 
     # Create menu
-    self.streams_menu = gtk.Menu() 
+    self.streams_menu = gtk.Menu()
     self.menuItems.insert(2, gtk.MenuItem("Live channels ({0})".format(len(streams))))
     self.menuItems.insert(3, gtk.SeparatorMenuItem())
     self.menuItems[2].set_submenu(self.streams_menu)
 
     # Order streams by alphabetical order
     self.streams_ordered = sorted(streams, key=lambda k: k["name"].lower())
-    
+
     for index, stream in enumerate(self.streams_ordered):
-      self.streams_menu.append(gtk.MenuItem(stream["name"]))
-      self.streams_menu.get_children()[index].connect('activate', self.open_link, stream["url"])
-    
+        self.icon = gtk.Image();
+        self.icon.set_from_pixbuf(stream['pixbuf'].get_pixbuf())
+        self.menu_entry = gtk.ImageMenuItem('%s - %s' % (stream['name'], stream['game']))
+        self.menu_entry.set_image(self.icon)
+        self.streams_menu.append(self.menu_entry)
+        self.streams_menu.get_children()[index].connect('activate', self.open_link, stream["url"])
+
     for i in self.streams_menu.get_children():
       i.show()
 
@@ -234,7 +251,7 @@ class Indicator():
     if self.followed_channels == None:
       GLib.idle_add(self.abort_refresh, "Cannot retrieve channel list from Twitch.tv", "Retrying in {0} minutes...".format(self.settings.get_int("refresh-interval")))
       return
-    
+
     self.live_streams = self.tw.fetch_live_streams(self.followed_channels)
     if self.live_streams == None:
       GLib.idle_add(self.abort_refresh, "Cannot retrieve live streams from Twitch.tv", "Retrying in {0} minutes...".format(self.settings.get_int("refresh-interval")))
@@ -242,7 +259,7 @@ class Indicator():
 
     # Update menu with live streams
     GLib.idle_add(self.add_streams_menu, self.live_streams)
-    
+
     # Re-enable "Check now" button
     GLib.idle_add(self.enable_menu)
 
@@ -257,7 +274,7 @@ class Indicator():
         if x["url"] == y["url"]:
           self.notify_list[:] = [d for d in self.notify_list if d.get('url') != y["url"]]
           break
-    
+
     self.LIVE_STREAMS = self.live_streams
 
     # Push notifications of new streams
@@ -279,7 +296,7 @@ class Indicator():
     self.menuItems[0].set_sensitive(True)
     self.menuItems[0].set_label("Check now")
 
-    # Refresh all menu items 
+    # Refresh all menu items
     for i in self.menu.get_children():
       self.menu.remove(i)
 
@@ -315,7 +332,7 @@ class Indicator():
           "",
         )
 
-        self.n.set_icon_from_pixbuf(self.loader.get_pixbuf())
+        self.n.set_icon_from_pixbuf(stream['pixbuf'].get_pixbuf())
         self.n.show()
     except IOError:
       return
