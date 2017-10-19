@@ -23,12 +23,12 @@ class Twitch:
     try:
       self.followed_channels = []
 
-      self.f = urlopen("https://api.twitch.tv/kraken/users/{0}/follows/channels?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&direction=DESC&limit=100&offset=0&sortby=created_at".format(username))
+      self.f = urlopen('https://api.twitch.tv/kraken/users/{0}/follows/channels?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&direction=DESC&limit=100&offset=0&sortby=created_at'.format(username))
       self.data = json.loads(self.f.read())
 
       # Return 404 if user does not exist
       try:
-        if (self.data["status"] == 404):
+        if (self.data['status'] == 404):
           return 404
       except KeyError:
         pass
@@ -36,7 +36,7 @@ class Twitch:
       self.pages = int((self.data['_total'] - 1) / 100)
       for page in range(self.pages + 1):
         if page != 0:
-          self.f = urlopen("https://api.twitch.tv/kraken/users/{0}/follows/channels?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&direction=DESC&limit=100&offset={1}&sortby=created_at".format(username, (page * 100)))
+          self.f = urlopen('https://api.twitch.tv/kraken/users/{0}/follows/channels?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&direction=DESC&limit=100&offset={1}&sortby=created_at'.format(username, (page * 100)))
           self.data = json.loads(self.f.read())
 
         for channel in self.data['follows']:
@@ -59,7 +59,7 @@ class Twitch:
           self.offset = self.channels_count
         self.channels_offset = channels[(page * 75):self.offset]
 
-        self.f = urlopen("https://api.twitch.tv/kraken/streams?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&channel={0}".format(','.join(self.channels_offset)))
+        self.f = urlopen('https://api.twitch.tv/kraken/streams?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&channel={0}'.format(','.join(self.channels_offset)))
         self.data = json.loads(self.f.read())
 
         for stream in self.data['streams']:
@@ -68,11 +68,11 @@ class Twitch:
           try:
             self.status = stream['channel']['status']
           except KeyError:
-            self.status = ""
+            self.status = ''
 
           # Show default if channel owner has not set his avatar
           if (stream['channel']['logo'] == None):
-            self.response = urlopen("http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png")
+            self.response = urlopen('http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png')
           else:
             self.response = urlopen(stream['channel']['logo'])
           self.loader = GdkPixbuf.PixbufLoader.new()
@@ -86,7 +86,7 @@ class Twitch:
             'status': self.status,
             'image': stream['channel']['logo'],
             'pixbuf': self.loader,
-            'url': "http://www.twitch.tv/%s" % stream['channel']['name']
+            'url': 'http://www.twitch.tv/%s' % stream['channel']['name']
           }
 
           self.live_streams.append(st)
@@ -95,25 +95,19 @@ class Twitch:
       return None
 
 class Indicator():
-  SETTINGS_KEY = "apps.twitch-indicator"
+  SETTINGS_KEY = 'apps.twitch-indicator'
   LIVE_STREAMS = []
 
   def __init__(self):
     self.timeout_thread = None
 
-    # Setup applet icon
-    self.applet_icon = "twitch-indicator"
-
     # Create applet
     self.a = appindicator.Indicator.new(
       'Twitch indicator',
-      'indicator-messages',
+      '/usr/share/icons/twitch-indicator.svg', # TODO: hardcoded paths seem wrong
       appindicator.IndicatorCategory.APPLICATION_STATUS
     )
     self.a.set_status(appindicator.IndicatorStatus.ACTIVE)
-    # TODO: hardcoded paths seem wrong
-    self.a.set_icon_theme_path("/usr/lib/twitch-indicator/")
-    self.a.set_icon(self.applet_icon)
 
     # Load settings
     self.settings = Gio.Settings.new(self.SETTINGS_KEY)
@@ -151,13 +145,13 @@ class Indicator():
     self.t.start()
 
     if (button_activate is False):
-      self.timeout_thread = threading.Timer(self.settings.get_int("refresh-interval")*60, self.refresh_streams_init, [None])
+      self.timeout_thread = threading.Timer(self.settings.get_int('refresh-interval') * 60, self.refresh_streams_init, [None])
       self.timeout_thread.start()
 
   def settings_dialog(self, widget):
     """Shows applet settings dialog."""
     self.dialog = gtk.Dialog(
-      "Settings",
+      'Settings',
       None,
       0,
       (gtk.STOCK_CANCEL, gtk.ResponseType.CANCEL,
@@ -166,20 +160,20 @@ class Indicator():
 
     self.builder = gtk.Builder()
     # TODO: hardcoded paths seem wrong
-    self.builder.add_from_file("/usr/lib/twitch-indicator/twitch-indicator.glade")
+    self.builder.add_from_file('/usr/share/twitch-indicator/twitch-indicator.glade')
 
-    self.builder.get_object("twitch_username").set_text(self.settings.get_string("twitch-username"))
-    self.builder.get_object("show_notifications").set_active(self.settings.get_boolean("enable-notifications"))
-    self.builder.get_object("refresh_interval").set_value(self.settings.get_int("refresh-interval"))
+    self.builder.get_object('twitch_username').set_text(self.settings.get_string('twitch-username'))
+    self.builder.get_object('show_notifications').set_active(self.settings.get_boolean('enable-notifications'))
+    self.builder.get_object('refresh_interval').set_value(self.settings.get_int('refresh-interval'))
 
     self.box = self.dialog.get_content_area()
-    self.box.add(self.builder.get_object("grid1"))
+    self.box.add(self.builder.get_object('grid1'))
     self.response = self.dialog.run()
 
     if self.response == gtk.ResponseType.OK:
-      self.settings.set_string("twitch-username", self.builder.get_object("twitch_username").get_text())
-      self.settings.set_boolean("enable-notifications", self.builder.get_object("show_notifications").get_active())
-      self.settings.set_int("refresh-interval", self.builder.get_object("refresh_interval").get_value_as_int())
+      self.settings.set_string('twitch-username', self.builder.get_object('twitch_username').get_text())
+      self.settings.set_boolean('enable-notifications', self.builder.get_object('show_notifications').get_active())
+      self.settings.set_int('refresh-interval', self.builder.get_object('refresh_interval').get_value_as_int())
     elif self.response == gtk.ResponseType.CANCEL:
       pass
 
@@ -188,12 +182,12 @@ class Indicator():
   def disable_menu(self):
     """Disables check now button."""
     self.menu.get_children()[0].set_sensitive(False)
-    self.menu.get_children()[0].set_label("Checking...")
+    self.menu.get_children()[0].set_label('Checking...')
 
   def enable_menu(self):
     """Enables check now button."""
     self.menu.get_children()[0].set_sensitive(True)
-    self.menu.get_children()[0].set_label("Check now")
+    self.menu.get_children()[0].set_label('Check now')
 
   def add_streams_menu(self, streams):
     """Adds streams list to menu."""
@@ -204,12 +198,12 @@ class Indicator():
 
     # Create menu
     self.streams_menu = gtk.Menu()
-    self.menuItems.insert(2, gtk.MenuItem("Live channels ({0})".format(len(streams))))
+    self.menuItems.insert(2, gtk.MenuItem('Live channels ({0})'.format(len(streams))))
     self.menuItems.insert(3, gtk.SeparatorMenuItem())
     self.menuItems[2].set_submenu(self.streams_menu)
 
     # Order streams by alphabetical order
-    self.streams_ordered = sorted(streams, key=lambda k: k["name"].lower())
+    self.streams_ordered = sorted(streams, key=lambda k: k['name'].lower())
 
     for index, stream in enumerate(self.streams_ordered):
         self.icon = gtk.Image();
@@ -217,7 +211,7 @@ class Indicator():
         self.menu_entry = gtk.ImageMenuItem('%s - %s' % (stream['name'], stream['game']))
         self.menu_entry.set_image(self.icon)
         self.streams_menu.append(self.menu_entry)
-        self.streams_menu.get_children()[index].connect('activate', self.open_link, stream["url"])
+        self.streams_menu.get_children()[index].connect('activate', self.open_link, stream['url'])
 
     for i in self.streams_menu.get_children():
       i.show()
@@ -235,26 +229,26 @@ class Indicator():
     """Refreshes live streams list. Also pushes notifications when needed."""
     GLib.idle_add(self.disable_menu)
 
-    if (self.settings.get_string("twitch-username") == ""):
-      GLib.idle_add(self.abort_refresh, "Twitch.tv username is not set", "Setup your username in settings")
+    if (self.settings.get_string('twitch-username') == ''):
+      GLib.idle_add(self.abort_refresh, 'Twitch.tv username is not set', 'Setup your username in settings')
       return
 
     # Create twitch instance and fetch followed channels.
     self.tw = Twitch()
-    self.followed_channels = self.tw.fetch_followed_channels(self.settings.get_string("twitch-username"))
+    self.followed_channels = self.tw.fetch_followed_channels(self.settings.get_string('twitch-username'))
 
     # Does user exist?
     if self.followed_channels == 404:
-      GLib.idle_add(self.abort_refresh, "Cannot retrieve followed channels from Twitch.tv", "User does not exist.")
+      GLib.idle_add(self.abort_refresh, 'Cannot retrieve followed channels from Twitch.tv', 'User does not exist.')
       return
 
     if self.followed_channels == None:
-      GLib.idle_add(self.abort_refresh, "Cannot retrieve channel list from Twitch.tv", "Retrying in {0} minutes...".format(self.settings.get_int("refresh-interval")))
+      GLib.idle_add(self.abort_refresh, 'Cannot retrieve channel list from Twitch.tv', 'Retrying in {0} minutes...'.format(self.settings.get_int('refresh-interval')))
       return
 
     self.live_streams = self.tw.fetch_live_streams(self.followed_channels)
     if self.live_streams == None:
-      GLib.idle_add(self.abort_refresh, "Cannot retrieve live streams from Twitch.tv", "Retrying in {0} minutes...".format(self.settings.get_int("refresh-interval")))
+      GLib.idle_add(self.abort_refresh, 'Cannot retrieve live streams from Twitch.tv', 'Retrying in {0} minutes...'.format(self.settings.get_int('refresh-interval')))
       return
 
     # Update menu with live streams
@@ -271,14 +265,14 @@ class Indicator():
     self.notify_list = list(self.live_streams)
     for x in self.LIVE_STREAMS:
       for y in self.live_streams:
-        if x["url"] == y["url"]:
-          self.notify_list[:] = [d for d in self.notify_list if d.get('url') != y["url"]]
+        if x['url'] == y['url']:
+          self.notify_list[:] = [d for d in self.notify_list if d.get('url') != y['url']]
           break
 
     self.LIVE_STREAMS = self.live_streams
 
     # Push notifications of new streams
-    if (self.settings.get_boolean("enable-notifications")):
+    if (self.settings.get_boolean('enable-notifications')):
       self.push_notifications(self.notify_list)
 
   def abort_refresh(self, message, description):
@@ -294,7 +288,7 @@ class Indicator():
 
     # Re-enable "Check now" button
     self.menuItems[0].set_sensitive(True)
-    self.menuItems[0].set_label("Check now")
+    self.menuItems[0].set_label('Check now')
 
     # Refresh all menu items
     for i in self.menu.get_children():
@@ -306,10 +300,10 @@ class Indicator():
     self.menu.show_all()
 
     # Push notification
-    Notify.init("image")
+    Notify.init('image')
     self.n = Notify.Notification.new(message,
       description,
-      "error"
+      'error'
     ).show()
 
   def push_notifications(self, streams):
@@ -318,18 +312,18 @@ class Indicator():
       for stream in streams:
         self.image = gtk.Image()
         # Show default if channel owner has not set his avatar
-        if (stream["image"] == None):
-          self.response = urlopen("http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png")
+        if (stream['image'] == None):
+          self.response = urlopen('http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png')
         else:
-          self.response = urlopen(stream["image"])
+          self.response = urlopen(stream['image'])
         self.loader = GdkPixbuf.PixbufLoader.new()
         self.loader.write(self.response.read())
         self.loader.close()
 
-        Notify.init("image")
-        self.n = Notify.Notification.new("%s just went LIVE!" % stream["name"],
-          stream["status"],
-          "",
+        Notify.init('image')
+        self.n = Notify.Notification.new('%s just went LIVE!' % stream['name'],
+          stream['status'],
+          '',
         )
 
         self.n.set_icon_from_pixbuf(stream['pixbuf'].get_pixbuf())
@@ -346,7 +340,7 @@ class Indicator():
     self.timeout_thread.cancel()
     gtk.main_quit()
 
-if __name__=="__main__":
+if __name__ == '__main__':
   Gdk.threads_init()
   gui = Indicator()
   gui.main()
