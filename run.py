@@ -11,7 +11,7 @@ from gi.repository import AppIndicator3 as appindicator
 import os
 import time
 
-import urllib
+from urllib.request import urlopen
 import json
 import sys
 import webbrowser
@@ -23,7 +23,7 @@ class Twitch:
     try:
       self.followed_channels = []
 
-      self.f = urllib.urlopen("https://api.twitch.tv/kraken/users/{0}/follows/channels?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&direction=DESC&limit=100&offset=0&sortby=created_at".format(username))
+      self.f = urlopen("https://api.twitch.tv/kraken/users/{0}/follows/channels?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&direction=DESC&limit=100&offset=0&sortby=created_at".format(username))
       self.data = json.loads(self.f.read())
 
       # Return 404 if user does not exist
@@ -33,10 +33,10 @@ class Twitch:
       except KeyError:
         pass
 
-      self.pages = (self.data['_total'] - 1) / 100
-      for page in range(0, self.pages + 1):
+      self.pages = int((self.data['_total'] - 1) / 100)
+      for page in range(self.pages + 1):
         if page != 0:
-          self.f = urllib.urlopen("https://api.twitch.tv/kraken/users/{0}/follows/channels?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&direction=DESC&limit=100&offset={1}&sortby=created_at".format(username, (page * 100)))
+          self.f = urlopen("https://api.twitch.tv/kraken/users/{0}/follows/channels?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&direction=DESC&limit=100&offset={1}&sortby=created_at".format(username, (page * 100)))
           self.data = json.loads(self.f.read())
 
         for channel in self.data['follows']:
@@ -52,14 +52,14 @@ class Twitch:
       self.channels_count = len(channels)
       self.live_streams = []
 
-      self.pages = (self.channels_count - 1) / 75
-      for page in range(0, self.pages + 1):
+      self.pages = int((self.channels_count - 1) / 75)
+      for page in range(self.pages + 1):
         self.offset = (page * 75) + 75
         if (self.offset % 75 > 0):
           self.offset = self.channels_count
         self.channels_offset = channels[(page * 75):self.offset]
 
-        self.f = urllib.urlopen("https://api.twitch.tv/kraken/streams?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&channel={0}".format(','.join(self.channels_offset)))
+        self.f = urlopen("https://api.twitch.tv/kraken/streams?client_id=oe77z9pq798tln7ngil0exwr0mun4hj&channel={0}".format(','.join(self.channels_offset)))
         self.data = json.loads(self.f.read())
 
         for stream in self.data['streams']:
@@ -72,9 +72,9 @@ class Twitch:
 
           # Show default if channel owner has not set his avatar
           if (stream['channel']['logo'] == None):
-            self.response = urllib.urlopen("http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png")
+            self.response = urlopen("http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png")
           else:
-            self.response = urllib.urlopen(stream['channel']['logo'])
+            self.response = urlopen(stream['channel']['logo'])
           self.loader = GdkPixbuf.PixbufLoader.new()
           self.loader.set_size(32, 32)
           self.loader.write(self.response.read())
@@ -319,9 +319,9 @@ class Indicator():
         self.image = gtk.Image()
         # Show default if channel owner has not set his avatar
         if (stream["image"] == None):
-          self.response = urllib.urlopen("http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png")
+          self.response = urlopen("http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png")
         else:
-          self.response = urllib.urlopen(stream["image"])
+          self.response = urlopen(stream["image"])
         self.loader = GdkPixbuf.PixbufLoader.new()
         self.loader.write(self.response.read())
         self.loader.close()
