@@ -10,7 +10,7 @@ gi.require_version('AppIndicator3', '0.1')
 gi.require_version('Notify', '0.7')
 gi.require_version('Gtk', '3.0')
 from gi.repository import AppIndicator3 as appindicator  # noqa: E402
-from gi.repository import GLib, Gio, Notify, GdkPixbuf, Gdk  # noqa: E402
+from gi.repository import GLib, Gio, Notify, GdkPixbuf  # noqa: E402
 from gi.repository import Gtk as gtk  # noqa: E402
 
 TWITCH_BASE_URL = 'https://www.twitch.tv/'
@@ -132,10 +132,10 @@ class Indicator():
         # Setup menu
         self.menu = gtk.Menu()
         self.menuItems = [
-            gtk.MenuItem('Check now'),
+            gtk.MenuItem(label='Check now'),
             gtk.SeparatorMenuItem(),
-            gtk.MenuItem('Settings'),
-            gtk.MenuItem('Quit')
+            gtk.MenuItem(label='Settings'),
+            gtk.MenuItem(label='Quit')
         ]
 
         self.menuItems[0].connect(
@@ -228,7 +228,7 @@ class Indicator():
         # Create menu
         self.streams_menu = gtk.Menu()
         self.menuItems.insert(2, gtk.MenuItem(
-            f'Live channels ({len(streams)})'))
+            label=f'Live channels ({len(streams)})'))
         self.menuItems.insert(3, gtk.SeparatorMenuItem())
         self.menuItems[2].set_submenu(self.streams_menu)
 
@@ -239,7 +239,7 @@ class Indicator():
             self.icon = gtk.Image()
             self.icon.set_from_pixbuf(stream['pixbuf'].get_pixbuf())
             self.menu_entry = gtk.ImageMenuItem(
-                f"{stream['name']} - {stream['game']}")
+                label=f"{stream['name']} - {stream['game']}")
             self.menu_entry.set_image(self.icon)
             self.streams_menu.append(self.menu_entry)
             self.streams_menu.get_children()[index].connect(
@@ -330,7 +330,7 @@ class Indicator():
             self.menuItems.pop(2)
             self.menuItems.pop(1)
 
-        self.menuItems.insert(2, gtk.MenuItem(message))
+        self.menuItems.insert(2, gtk.MenuItem(label=message))
         self.menuItems.insert(3, gtk.SeparatorMenuItem())
         self.menuItems[2].set_sensitive(False)
 
@@ -389,6 +389,5 @@ class Indicator():
 
 
 if __name__ == '__main__':
-    Gdk.threads_init()
     gui = Indicator()
     gui.main()
