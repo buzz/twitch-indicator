@@ -3,8 +3,10 @@
 import threading
 import webbrowser
 import json
-from urllib.request import urlopen
+from urllib.request import urlopen, Request, HTTPError
 import gi
+
+from pprint import pprint
 
 gi.require_version('AppIndicator3', '0.1')
 gi.require_version('Notify', '0.7')
@@ -14,108 +16,151 @@ from gi.repository import GLib, Gio, Notify, GdkPixbuf  # noqa: E402
 from gi.repository import Gtk as gtk  # noqa: E402
 
 TWITCH_BASE_URL = 'https://www.twitch.tv/'
-TWITCH_API_URL = 'https://api.twitch.tv/kraken/'
-DEFAULT_AVATAR = ('http://static-cdn.jtvnw.net/'
-                  'jtv_user_pictures/xarth/404_user_150x150.png')
+TWITCH_API_URL = 'https://api.twitch.tv/helix/'
+DEFAULT_AVATAR = 'http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png'
 CLIENT_ID = 'oe77z9pq798tln7ngil0exwr0mun4hj'
 
 
 class Twitch:
-    def fetch_followed_channels(self, username):
-        """Fetch user followed channels and return a list with channel
-        names.
-        """
-        try:
-            self.followed_channels = []
+    CHANNEL_INFO_CACHE = {}
+    GAME_INFO_CACHE = {}
 
-            self.f = urlopen(
-                f'{TWITCH_API_URL}users/{username}/follows/channels'
-                f'?client_id={CLIENT_ID}&direction=DESC'
-                '&limit=100&offset=0&sortby=created_at')
-            self.data = json.loads(self.f.read())
+    def clear_cache(self):
+        self.CHANNEL_INFO_CACHE.clear()
+        self.GAME_INFO_CACHE.clear()
 
-            # Return 404 if user does not exist
-            try:
-                if (self.data['status'] == 404):
-                    return 404
-            except KeyError:
-                pass
+    def fetch_followed_channels(self, user_id):
+        """Fetch user followed channels and return a list with channel ids."""
+        base_uri = TWITCH_API_URL + 'users/follows?from_id=' + user_id
+        resp = self.get_api_decoded_response(base_uri)
+        if type(resp) == HTTPError:
+            return resp
 
-            self.pages = int((self.data['_total'] - 1) / 100)
-            for page in range(self.pages + 1):
-                if page != 0:
-                    self.f = urlopen(
-                        f'{TWITCH_API_URL}users/{username}/follows/channels'
-                        f'?client_id={CLIENT_ID}&direction=DESC&limit=100&'
-                        f'offset={page * 100}&sortby=created_at')
-                    self.data = json.loads(self.f.read())
+        total = int(resp['total'])
+        fetched = len(resp['data'])
+        data = resp['data']
 
-                for channel in self.data['follows']:
-                    self.followed_channels.append(channel['channel']['name'])
-
-            return self.followed_channels
-        except IOError:
+        # User has not followed any channels
+        if total == 0:
             return None
 
-    def fetch_live_streams(self, channels):
+        last = resp
+        while fetched < total:
+            nxt = self.get_api_decoded_response(base_uri + '&after=' + last['pagination']['cursor'])
+            if type(nxt) == HTTPError:
+                return nxt
+
+            fetched += len(nxt['data'])
+            data += nxt['data']
+            last = nxt
+
+        return [data['to_id'] for data in data]
+
+    def fetch_live_streams(self, channel_ids):
         """Fetches live streams data from Twitch, and returns as list of
         dictionaries.
         """
-        try:
-            self.channels_count = len(channels)
-            self.live_streams = []
+        api_channel_limit = 100
+        base_uri = TWITCH_API_URL + 'streams'
 
-            self.pages = int((self.channels_count - 1) / 75)
-            for page in range(self.pages + 1):
-                self.offset = (page * 75) + 75
-                if (self.offset % 75 > 0):
-                    self.offset = self.channels_count
-                self.channels_offset = channels[(page * 75):self.offset]
+        channel_index = 0
+        channel_max = api_channel_limit
 
-                self.f = urlopen(
-                    f'{TWITCH_API_URL}streams?client_id={CLIENT_ID}'
-                    f'&channel={",".join(self.channels_offset)}')
-                self.data = json.loads(self.f.read())
+        channels_live = []
 
-                for stream in self.data['streams']:
-                    # For some reason sometimes stream status and game is not
-                    # present in twitch API.
-                    try:
-                        self.status = stream['channel']['status']
-                    except KeyError:
-                        self.status = ''
+        while channel_index < len(channel_ids):
+            curr_channels = channel_ids[channel_index:channel_max]
+            channel_index += len(curr_channels)
+            channel_max += api_channel_limit
 
-                    # Show default if channel owner has not set his avatar
-                    if stream['channel']['logo'] is None:
-                        self.response = urlopen(DEFAULT_AVATAR)
-                    else:
-                        self.response = urlopen(stream['channel']['logo'])
-                    self.loader = GdkPixbuf.PixbufLoader.new()
-                    self.loader.set_size(32, 32)
-                    self.loader.write(self.response.read())
-                    self.loader.close()
+            suffix = '?user_id=' + '&user_id='.join(curr_channels)
+            resp = self.get_api_decoded_response(base_uri + suffix)
 
-                    st = {
-                        'name': stream['channel']['display_name'],
-                        'game': stream['channel']['game'],
-                        'status': self.status,
-                        'image': stream['channel']['logo'],
-                        'pixbuf': self.loader,
-                        'url': f"{TWITCH_BASE_URL}{stream['channel']['name']}"
-                    }
+            [channels_live.append(c) for c in resp['data']]
 
-                    self.live_streams.append(st)
-            return self.live_streams
-        except IOError:
+        streams = []
+        for stream in channels_live:
+            channel_info = self.get_channel_info(stream['user_id'])
+            game_info = self.get_game_info(stream['game_id'])
+
+            channel_image = urlopen(
+                channel_info['profile_image_url']
+                if channel_info['profile_image_url']
+                else DEFAULT_AVATAR
+            )
+            image_loader = GdkPixbuf.PixbufLoader.new()
+            image_loader.set_size(128, 128)
+            image_loader.write(channel_image.read())
+            image_loader.close()
+
+            st = {
+                'name': channel_info['display_name'],
+                'game': game_info['name'],
+                'title': stream['title'],
+                'image': channel_info['profile_image_url'],
+                'pixbuf': image_loader,
+                'url': f"{TWITCH_BASE_URL}{channel_info['login']}"
+            }
+            streams.append(st)
+
+        return streams
+
+    def get_channel_info(self, channel_id):
+        channel_info = self.CHANNEL_INFO_CACHE.get(int(channel_id))
+        if channel_info is not None:
+            return channel_info
+
+        resp = self.get_api_decoded_response(TWITCH_API_URL + 'users?id=' + channel_id)
+        if type(resp) == HTTPError:
+            return resp
+        elif not len(resp['data']) == 1:
             return None
 
+        self.CHANNEL_INFO_CACHE[int(channel_id)] = resp['data'][0]
+        return resp['data'][0]
 
-class Indicator():
+    def get_game_info(self, game_id):
+        game_info = self.GAME_INFO_CACHE.get(int(game_id))
+        if game_info is not None:
+            return game_info
+
+        resp = self.get_api_decoded_response(TWITCH_API_URL + 'games?id=' + game_id)
+        if type(resp) == HTTPError:
+            return resp
+        elif not len(resp['data']) == 1:
+            return None
+
+        self.GAME_INFO_CACHE[int(game_id)] = resp['data'][0]
+        return resp['data'][0]
+
+    def get_user_id(self, username):
+        resp = self.get_api_decoded_response(TWITCH_API_URL + 'users?login=' + username)
+        if type(resp) == HTTPError:
+            return resp
+        elif not len(resp['data']) == 1:
+            return None
+        return resp['data'][0]['id']
+
+    def get_api_decoded_response(self, url):
+        headers = {'Client-ID': CLIENT_ID}
+        req = Request(url, headers=headers)
+        try:
+            resp = urlopen(req).read()
+            decoded = json.loads(resp)
+            return decoded
+        except HTTPError as e:
+            return e
+
+
+class Indicator:
     SETTINGS_KEY = 'apps.twitch-indicator'
     LIVE_STREAMS = []
+    USER_ID = None
 
     def __init__(self):
+        self.t = None
         self.timeout_thread = None
+        self.tw = None
 
         # Create applet
         self.a = appindicator.Indicator.new(
@@ -152,61 +197,67 @@ class Indicator():
 
         self.refresh_streams_init(None)
 
+    def clear_cache(self):
+        self.USER_ID = None
+        self.tw.clear_cache()
+
     def open_link(self, widget, url):
         """Opens link in a default browser."""
         webbrowser.open_new_tab(url)
 
     def refresh_streams_init(self, widget, button_activate=False):
+        self.tw = Twitch()
+
         """Initializes thread for stream refreshing."""
         self.t = threading.Thread(target=self.refresh_streams)
         self.t.daemon = True
         self.t.start()
 
-        if (button_activate is False):
+        if button_activate is False:
             self.timeout_thread = threading.Timer(self.settings.get_int(
                 'refresh-interval') * 60, self.refresh_streams_init, [None])
             self.timeout_thread.start()
 
     def settings_dialog(self, widget):
         """Shows applet settings dialog."""
-        self.dialog = gtk.Dialog(
-            'Settings',
-            None,
-            0,
-            (gtk.STOCK_CANCEL, gtk.ResponseType.CANCEL,
-             gtk.STOCK_OK, gtk.ResponseType.OK)
+        dialog = gtk.Dialog('Settings', None, 0)
+        dialog.add_buttons(
+            gtk.STOCK_CANCEL, gtk.ResponseType.CANCEL,
+            gtk.STOCK_OK, gtk.ResponseType.OK
         )
 
-        self.builder = gtk.Builder()
+        builder = gtk.Builder()
         # TODO: hardcoded paths seem wrong
-        self.builder.add_from_file(
+        builder.add_from_file(
             '/usr/share/twitch-indicator/twitch-indicator.glade')
 
-        self.builder.get_object('twitch_username').set_text(
+        builder.get_object('twitch_username').set_text(
             self.settings.get_string('twitch-username'))
-        self.builder.get_object('show_notifications').set_active(
+        builder.get_object('show_notifications').set_active(
             self.settings.get_boolean('enable-notifications'))
-        self.builder.get_object('refresh_interval').set_value(
+        builder.get_object('refresh_interval').set_value(
             self.settings.get_int('refresh-interval'))
 
-        self.box = self.dialog.get_content_area()
-        self.box.add(self.builder.get_object('grid1'))
-        self.response = self.dialog.run()
+        box = dialog.get_content_area()
+        box.add(builder.get_object('grid1'))
+        response = dialog.run()
 
-        if self.response == gtk.ResponseType.OK:
+        if response == gtk.ResponseType.OK:
             self.settings.set_string(
                 'twitch-username',
-                self.builder.get_object('twitch_username').get_text())
+                builder.get_object('twitch_username').get_text())
             self.settings.set_boolean(
                 'enable-notifications',
-                self.builder.get_object('show_notifications').get_active())
+                builder.get_object('show_notifications').get_active())
             self.settings.set_int(
                 'refresh-interval',
-                self.builder.get_object('refresh_interval').get_value_as_int())
-        elif self.response == gtk.ResponseType.CANCEL:
+                builder.get_object('refresh_interval').get_value_as_int())
+
+            self.clear_cache()
+        elif response == gtk.ResponseType.CANCEL:
             pass
 
-        self.dialog.destroy()
+        dialog.destroy()
 
     def disable_menu(self):
         """Disables check now button."""
@@ -221,31 +272,28 @@ class Indicator():
     def add_streams_menu(self, streams):
         """Adds streams list to menu."""
         # Remove live streams menu if already exists
-        if (len(self.menuItems) > 4):
+        if len(self.menuItems) > 4:
             self.menuItems.pop(2)
             self.menuItems.pop(1)
 
         # Create menu
-        self.streams_menu = gtk.Menu()
+        streams_menu = gtk.Menu()
         self.menuItems.insert(2, gtk.MenuItem(
             label=f'Live channels ({len(streams)})'))
         self.menuItems.insert(3, gtk.SeparatorMenuItem())
-        self.menuItems[2].set_submenu(self.streams_menu)
+        self.menuItems[2].set_submenu(streams_menu)
 
         # Order streams by alphabetical order
-        self.streams_ordered = sorted(streams, key=lambda k: k['name'].lower())
+        streams_ordered = sorted(streams, key=lambda k: k['name'].lower())
 
-        for index, stream in enumerate(self.streams_ordered):
-            self.icon = gtk.Image()
-            self.icon.set_from_pixbuf(stream['pixbuf'].get_pixbuf())
-            self.menu_entry = gtk.ImageMenuItem(
+        for index, stream in enumerate(streams_ordered):
+            menu_entry = gtk.MenuItem(
                 label=f"{stream['name']} - {stream['game']}")
-            self.menu_entry.set_image(self.icon)
-            self.streams_menu.append(self.menu_entry)
-            self.streams_menu.get_children()[index].connect(
+            streams_menu.append(menu_entry)
+            streams_menu.get_children()[index].connect(
                 'activate', self.open_link, stream['url'])
 
-        for i in self.streams_menu.get_children():
+        for i in streams_menu.get_children():
             i.show()
 
         # Refresh all menu by removing and re-adding menu items
@@ -262,43 +310,52 @@ class Indicator():
         """
         GLib.idle_add(self.disable_menu)
 
-        if (self.settings.get_string('twitch-username') == ''):
-            GLib.idle_add(self.abort_refresh, 'Twitch.tv username is not set',
+        if self.settings.get_string('twitch-username') == '':
+            GLib.idle_add(self.abort_refresh, None, 'Twitch.tv username is not set',
                           'Setup your username in settings')
             return
 
-        # Create twitch instance and fetch followed channels.
-        self.tw = Twitch()
-        self.followed_channels = self.tw.fetch_followed_channels(
-            self.settings.get_string('twitch-username'))
+        if self.USER_ID is None:
+            self.USER_ID = self.tw.get_user_id(self.settings.get_string('twitch-username'))
+            if self.USER_ID is None:
+                GLib.idle_add(self.abort_refresh, None, 'Cannot resolve Twitch.tv username',
+                              'Setup your username in settings')
+                return
 
-        # Does user exist?
-        if self.followed_channels == 404:
-            GLib.idle_add(
-                self.abort_refresh,
-                'Cannot retrieve followed channels from Twitch.tv',
-                'User does not exist.')
-            return
+        # fetch followed channels
+        followed_channels = self.tw.fetch_followed_channels(self.USER_ID)
 
-        if self.followed_channels is None:
+        # Did an error occur?
+        if type(followed_channels) == HTTPError:
             interval = self.settings.get_int('refresh-interval')
             GLib.idle_add(
-                self.abort_refresh,
+                self.abort_refresh, followed_channels,
                 'Cannot retrieve channel list from Twitch.tv',
                 f'Retrying in {interval} minutes...')
             return
 
-        self.live_streams = self.tw.fetch_live_streams(self.followed_channels)
-        if self.live_streams is None:
+        # Are there channels that the user follows?
+        elif followed_channels is None:
+            return
+
+        # Fetch live streams
+        live_streams = self.tw.fetch_live_streams(followed_channels)
+
+        # Did an error occur?
+        if type(live_streams) == HTTPError:
             interval = self.settings.get_int('refresh-interval')
             GLib.idle_add(
-                self.abort_refresh,
+                self.abort_refresh, live_streams,
                 'Cannot retrieve live streams from Twitch.tv',
                 f'Retrying in {interval} minutes...')
             return
 
+        # Are there *live* streams?
+        elif live_streams is None:
+            return
+
         # Update menu with live streams
-        GLib.idle_add(self.add_streams_menu, self.live_streams)
+        GLib.idle_add(self.add_streams_menu, live_streams)
 
         # Re-enable "Check now" button
         GLib.idle_add(self.enable_menu)
@@ -308,25 +365,25 @@ class Indicator():
         # We check live streams by URL, because sometimes Twitch API does not
         # show stream status, which makes notifications appear even if stream
         # has been live before.
-        self.notify_list = list(self.live_streams)
+        notify_list = list(live_streams)
         for x in self.LIVE_STREAMS:
-            for y in self.live_streams:
+            for y in live_streams:
                 if x['url'] == y['url']:
-                    self.notify_list[:] = [
-                        d for d in self.notify_list if d.get('url') != y['url']
+                    notify_list[:] = [
+                        d for d in notify_list if d.get('url') != y['url']
                     ]
                     break
 
-        self.LIVE_STREAMS = self.live_streams
+        self.LIVE_STREAMS = live_streams
 
         # Push notifications of new streams
-        if (self.settings.get_boolean('enable-notifications')):
-            self.push_notifications(self.notify_list)
+        if self.settings.get_boolean('enable-notifications'):
+            self.push_notifications(notify_list)
 
-    def abort_refresh(self, message, description):
+    def abort_refresh(self, exception, message, description):
         """Updates menu with failure state message."""
         # Remove previous message if already exists
-        if (len(self.menuItems) > 4):
+        if len(self.menuItems) > 4:
             self.menuItems.pop(2)
             self.menuItems.pop(1)
 
@@ -348,35 +405,30 @@ class Indicator():
         self.menu.show_all()
 
         # Push notification
-        Notify.init('image')
-        self.n = Notify.Notification.new(message, description, 'error').show()
+        Notify.init('Twitch Indicator')
+
+        if type(exception) == HTTPError:
+            message = str(exception.code) + ': ' + message
+        Notify.Notification.new(message, description, 'error').show()
 
     def push_notifications(self, streams):
         """Pushes notifications of every stream, passed as a list of
         dictionaries.
         """
-        try:
-            for stream in streams:
-                self.image = gtk.Image()
-                # Show default if channel owner has not set his avatar
-                if stream['image'] is None:
-                    self.response = urlopen(DEFAULT_AVATAR)
-                else:
-                    self.response = urlopen(stream['image'])
-                self.loader = GdkPixbuf.PixbufLoader.new()
-                self.loader.write(self.response.read())
-                self.loader.close()
 
-                Notify.init('image')
-                self.n = Notify.Notification.new(
-                    f"{stream['name']} just went LIVE!",
-                    stream['status'],
-                    '')
+        for stream in streams:
+            image = gtk.Image()
+            # Show default if channel owner has not set his avatar
 
-                self.n.set_icon_from_pixbuf(stream['pixbuf'].get_pixbuf())
-                self.n.show()
-        except IOError:
-            return
+            Notify.init('Twitch Notification')
+            n = Notify.Notification.new(
+                f"{stream['name']} just went LIVE!",
+                stream['title'],
+                '')
+
+            # Fixed deprecation warning
+            n.set_image_from_pixbuf(stream['pixbuf'].get_pixbuf())
+            n.show()
 
     def main(self):
         """Main indicator function."""
