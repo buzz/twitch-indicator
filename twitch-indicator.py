@@ -6,8 +6,6 @@ import json
 from urllib.request import urlopen, Request, HTTPError
 import gi
 
-from pprint import pprint
-
 gi.require_version('AppIndicator3', '0.1')
 gi.require_version('Notify', '0.7')
 gi.require_version('Gtk', '3.0')
@@ -235,6 +233,8 @@ class Indicator:
             self.settings.get_string('twitch-username'))
         builder.get_object('show_notifications').set_active(
             self.settings.get_boolean('enable-notifications'))
+        builder.get_object('show_game').set_active(
+            self.settings.get_boolean('show-game-playing'))
         builder.get_object('refresh_interval').set_value(
             self.settings.get_int('refresh-interval'))
 
@@ -249,6 +249,9 @@ class Indicator:
             self.settings.set_boolean(
                 'enable-notifications',
                 builder.get_object('show_notifications').get_active())
+            self.settings.set_boolean(
+                'show-game-playing',
+                builder.get_object('show_game').get_active())
             self.settings.set_int(
                 'refresh-interval',
                 builder.get_object('refresh_interval').get_value_as_int())
@@ -420,10 +423,14 @@ class Indicator:
             image = gtk.Image()
             # Show default if channel owner has not set his avatar
 
+            body = str(stream['title'])
+            if self.settings.get_boolean('show-game-playing'):
+                body = f"Currently playing: {stream['game']}\n{body}"
+
             Notify.init('Twitch Notification')
             n = Notify.Notification.new(
                 f"{stream['name']} just went LIVE!",
-                stream['title'],
+                body,
                 '')
 
             # Fixed deprecation warning

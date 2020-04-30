@@ -13,6 +13,12 @@
       <description>When followed channel goes live, will show a notification.</description>
     </key>
 
+    <key type="b" name="show-game-playing">
+      <default>true</default>
+      <summary>Show played game</summary>
+      <description>Shows the game the streamer is playing in the notification as well.</description>
+    </key>
+
     <key type="i" name="refresh-interval">
       <default>5</default>
       <summary>Refresh interval.</summary>
