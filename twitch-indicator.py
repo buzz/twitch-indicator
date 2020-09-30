@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 import gi
 import os
 from datetime import datetime
-from pathlib import Path
+from xdg.BaseDirectory import xdg_config_home # need pyxdg dependency (pacman -S python-pyxdg)
 
 gi.require_version('AppIndicator3', '0.1')
 gi.require_version('Notify', '0.7')
@@ -17,7 +17,7 @@ from gi.repository import AppIndicator3 as appindicator  # noqa: E402
 from gi.repository import GLib, Gio, Notify, GdkPixbuf  # noqa: E402
 from gi.repository import Gtk as gtk  # noqa: E402
 
-CONFIG_DIR=str(Path.home()) + '/.config/twitch-indicator'
+CONFIG_DIR=os.path.join(xdg_config_home, 'twitch-indicator')
 TOKEN_FILE=CONFIG_DIR + '/token.json'
 
 TWITCH_BASE_URL = 'https://www.twitch.tv/'
