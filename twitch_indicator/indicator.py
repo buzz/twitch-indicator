@@ -1,15 +1,25 @@
 """Desktop indicator"""
 
+from socket import AF_UNIX, SOCK_DGRAM, socket
 import threading
+import os.path
 import webbrowser
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from urllib.request import HTTPError
+from random import SystemRandom
 
 from gi.repository import AppIndicator3 as appindicator
 from gi.repository import GLib, Gio, Notify
 from gi.repository import Gtk
 
 from twitch_indicator import get_data_filepath
-from twitch_indicator.constants import SETTINGS_KEY
+from twitch_indicator.constants import (
+    SETTINGS_KEY,
+    TWITCH_AUTH_REDIRECT_URI,
+    TWITCH_AUTH_URL,
+    TWITCH_CLIENT_ID,
+    UNICODE_ASCII_CHARACTER_SET,
+)
 from twitch_indicator.twitch import TwitchApi
 
 
@@ -23,6 +33,7 @@ class Indicator:
         self.thread = None
         self.timeout_thread = None
         self.twitch = None
+        self.token = None
 
         # Create applet
         self.app_indicator = appindicator.Indicator.new(
@@ -55,12 +66,71 @@ class Indicator:
 
         self.menu.show_all()
 
-        self.refresh_streams_init(None)
+        self.check_auth_token()
 
     def clear_cache(self):
         """Clear cache."""
         self.user_id = None
         self.twitch.clear_cache()
+
+    def check_auth_token(self):
+        """Check auth token."""
+        user_config_dir = GLib.get_user_config_dir()
+        config_dir = os.path.join(user_config_dir, "twitch-indicator")
+        if not os.path.isdir(config_dir):
+            os.mkdir(config_dir)
+        token_path = os.path.join(config_dir, "authtoken")
+        if os.path.isfile(token_path):
+            with open(token_path, "r") as token_file:
+                self.token = token_file.read()
+                self.refresh_streams_init(None)
+        else:
+            self.acquire_token()
+            with open(token_path, "w") as token_file:
+                token_file.write(self.token)
+            os.chmod(token_path, 0o600)
+        if self.token:
+            self.refresh_streams_init(None)
+
+    def acquire_token(self):
+        """Aquire Twitch API auth token."""
+        redirect_uri_parts = urlparse(TWITCH_AUTH_REDIRECT_URI)
+        rand = SystemRandom()
+        state = "".join(rand.choice(UNICODE_ASCII_CHARACTER_SET) for x in range(30))
+        url_parts = list(urlparse(TWITCH_AUTH_URL))
+        query = {
+            "response_type": "token",
+            "client_id": TWITCH_CLIENT_ID,
+            "state": state,
+            "redirect_uri": TWITCH_AUTH_REDIRECT_URI,
+        }
+        url_parts[4] = urlencode(query)
+        url = urlunparse(url_parts)
+
+        # Listen on socket
+        server = socket(AF_UNIX, SOCK_DGRAM)
+        socket_path = os.path.join(os.sep, "tmp", "twitch-indicator-auth-socket")
+        if os.path.exists(socket_path):
+            os.remove(socket_path)
+        server.bind(socket_path)
+
+        # Open Twich auth URL
+        self.open_link(None, url)
+
+        # Receive auth token via auth_script
+        datagram = server.recv(1024)
+        received = datagram.decode("utf-8")
+        server.close()
+        os.remove(socket_path)
+
+        # Check response
+        response_url_parts = urlparse(received)
+        assert response_url_parts[0] == redirect_uri_parts[0]
+        assert response_url_parts[1] == redirect_uri_parts[1]
+        hash_params = parse_qs(response_url_parts[5])
+        assert hash_params["token_type"][0] == "bearer"
+        assert hash_params["state"][0] == state
+        [self.token] = hash_params["access_token"]
 
     def open_link(self, _, url):
         """Opens link in default browser."""
@@ -230,13 +300,13 @@ class Indicator:
             GLib.idle_add(
                 self.abort_refresh,
                 new_live_streams,
-                "Cannot retrieve live streams from Twitch.tv",
+                "Cannot retrieve live streams from Twitch",
                 f"Retrying in {interval} minutes...",
             )
             return
 
         # Are there *live* streams?
-        elif new_live_streams is None:
+        if new_live_streams is None:
             return
 
         # Update menu with live streams

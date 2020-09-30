@@ -5,10 +5,10 @@ from urllib.request import urlopen, Request, HTTPError
 from gi.repository import GdkPixbuf
 
 from twitch_indicator.constants import (
-    CLIENT_ID,
     DEFAULT_AVATAR,
     TWITCH_API_URL,
     TWITCH_BASE_URL,
+    TWITCH_CLIENT_ID,
 )
 
 
@@ -143,7 +143,7 @@ class TwitchApi:
 
     def get_api_decoded_response(self, url):
         """Decode JSON API response."""
-        headers = {"Client-ID": CLIENT_ID}
+        headers = {"Client-ID": TWITCH_CLIENT_ID}
         req = Request(url, headers=headers)
         try:
             resp = urlopen(req).read()

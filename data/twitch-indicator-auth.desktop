@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=twitch-indicator-auth
+Comment=Twitch auth script
+Exec=twitch-indicator-auth
+Terminal=false
+StartupNotify=false
+MimeType=x-scheme-handler/twitch-tray-icon-app;
+NoDisplay=true
