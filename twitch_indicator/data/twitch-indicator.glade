@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.22.2 -->
+<!-- Generated with glade 3.36.0 -->
 <interface>
   <requires lib="gtk+" version="3.10"/>
   <object class="GtkAdjustment" id="adjustment1">
@@ -12,19 +12,18 @@
   <object class="GtkGrid" id="grid1">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="margin_left">15</property>
-    <property name="margin_right">15</property>
     <property name="margin_top">10</property>
     <property name="margin_bottom">10</property>
     <property name="row_spacing">10</property>
     <property name="column_spacing">6</property>
+    <property name="row_homogeneous">True</property>
+    <property name="column_homogeneous">True</property>
     <child>
       <object class="GtkLabel" id="label5">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="tooltip_text" translatable="yes">Your Twitch username.</property>
         <property name="halign">end</property>
-        <property name="margin_right">2</property>
         <property name="label" translatable="yes">Twitch username:</property>
       </object>
       <packing>
@@ -38,7 +37,6 @@
         <property name="can_focus">False</property>
         <property name="tooltip_text" translatable="yes">Shows notifications when your followed channels go live.</property>
         <property name="halign">end</property>
-        <property name="margin_right">2</property>
         <property name="label" translatable="yes">Show notifications:</property>
       </object>
       <packing>
@@ -52,7 +50,6 @@
         <property name="can_focus">False</property>
         <property name="tooltip_text" translatable="yes">How many minutes should indicator wait between refreshing your followed channels.</property>
         <property name="halign">end</property>
-        <property name="margin_right">2</property>
         <property name="label" translatable="yes">Refresh interval:</property>
       </object>
       <packing>
@@ -109,6 +106,7 @@
       <object class="GtkGrid" id="grid6">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
+        <property name="column_spacing">8</property>
         <child>
           <object class="GtkSpinButton" id="refresh_interval">
             <property name="visible">True</property>
@@ -124,7 +122,6 @@
           <object class="GtkLabel" id="label8">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="margin_left">5</property>
             <property name="label" translatable="yes">min.</property>
           </object>
           <packing>
