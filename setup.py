@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-from distutils.core import setup
+"""setup.py for twitch-indicator"""
+
+import re
+from setuptools import find_packages, setup
 
 # parse version (setup.py should not import module!)
 def get_version():
@@ -10,22 +13,27 @@ def get_version():
     match = re.search(r"^VERSION = ['\"]([^'\"]*)['\"]", version_file_content, re.M)
     if match:
         return match.group(1)
-    raise RuntimeError("Unable to find version string in {}.".format(versionfile))
+    raise RuntimeError(f"Unable to find version string in {versionfile}.")
 
 
 setup(
     name="twitch-indicator",
     version=get_version(),
-    description="Twitch.tv indicator for Linux. Tracks your followed channels and notifies when they go live.",
+    description=(
+        "Twitch.tv indicator for Linux. "
+        "Tracks your followed channels and notifies when they go live."
+    ),
     author="buzz",
     author_email="buzz@users.noreply.github.com",
     license="GPLv2",
     url="https://github.com/buzz/twitch-indicator",
-    scripts=["twitch-indicator.py"],
+    packages=find_packages(),
+    entry_points={"gui_scripts": ["twitch-indicator = twitch_indicator.__main__:main"]},
     data_files=[
-        ("share/applications", ["twitch-indicator.desktop"]),
-        ("share/icons", ["twitch-indicator.svg"]),
-        ("share/glib-2.0/schemas", ["apps.twitch-indicator.gschema.xml"]),
-        ("share/twitch-indicator", ["twitch-indicator.glade"]),
+        ("share/applications", ["data/twitch-indicator.desktop"]),
+        ("share/icons", ["data/twitch-indicator.svg"]),
+        ("share/glib-2.0/schemas", ["data/apps.twitch-indicator.gschema.xml"]),
+        ("share/twitch-indicator", ["data/twitch-indicator.glade"]),
     ],
+    install_requires=["PyGObject"],
 )
