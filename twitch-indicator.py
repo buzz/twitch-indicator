@@ -5,6 +5,8 @@ import webbrowser
 import json
 from urllib.request import urlopen, Request, HTTPError
 import gi
+import os
+from datetime import datetime
 
 gi.require_version('AppIndicator3', '0.1')
 gi.require_version('Notify', '0.7')
@@ -13,11 +15,16 @@ from gi.repository import AppIndicator3 as appindicator  # noqa: E402
 from gi.repository import GLib, Gio, Notify, GdkPixbuf  # noqa: E402
 from gi.repository import Gtk as gtk  # noqa: E402
 
-TWITCH_BASE_URL = 'https://www.twitch.tv/'
-TWITCH_API_URL = 'https://api.twitch.tv/helix/'
-DEFAULT_AVATAR = 'http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png'
-CLIENT_ID = 'oe77z9pq798tln7ngil0exwr0mun4hj'
+CONFIG_DIR=os.path.expanduser('~') + '/.config/twitch-indicator'
+TOKEN_FILE=CONFIG_DIR + '/token.json'
 
+TWITCH_BASE_URL = 'https://www.twitch.tv/'
+DEFAULT_AVATAR = 'http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png'
+
+TWITCH_API_URL="https://api.twitch.tv/helix/"
+TWITCH_ID_URL="https://id.twitch.tv/oauth2/token"
+TWITCH_API_KEY="cotxsalhlctv8z572f7fant4b0sc3u"
+TWITCH_API_SECRET="gaofxvult280l3sbz8n6btvk5fdswp"
 
 class Twitch:
     CHANNEL_INFO_CACHE = {}
@@ -29,7 +36,7 @@ class Twitch:
 
     def fetch_followed_channels(self, user_id):
         """Fetch user followed channels and return a list with channel ids."""
-        base_uri = TWITCH_API_URL + 'users/follows?from_id=' + user_id
+        base_uri = 'users/follows?from_id=' + user_id
         resp = self.get_api_decoded_response(base_uri)
         if type(resp) == HTTPError:
             return resp
@@ -59,7 +66,7 @@ class Twitch:
         dictionaries.
         """
         api_channel_limit = 100
-        base_uri = TWITCH_API_URL + 'streams'
+        base_uri = 'streams'
 
         channel_index = 0
         channel_max = api_channel_limit
@@ -108,7 +115,7 @@ class Twitch:
         if channel_info is not None:
             return channel_info
 
-        resp = self.get_api_decoded_response(TWITCH_API_URL + 'users?id=' + channel_id)
+        resp = self.get_api_decoded_response('users?id=' + channel_id)
         if type(resp) == HTTPError:
             return resp
         elif not len(resp['data']) == 1:
@@ -122,7 +129,7 @@ class Twitch:
         if game_info is not None:
             return game_info
 
-        resp = self.get_api_decoded_response(TWITCH_API_URL + 'games?id=' + game_id)
+        resp = self.get_api_decoded_response('games?id=' + game_id)
         if type(resp) == HTTPError:
             return resp
         elif not len(resp['data']) == 1:
@@ -132,7 +139,7 @@ class Twitch:
         return resp['data'][0]
 
     def get_user_id(self, username):
-        resp = self.get_api_decoded_response(TWITCH_API_URL + 'users?login=' + username)
+        resp = self.get_api_decoded_response('users?login=' + username)
         if type(resp) == HTTPError:
             return resp
         elif not len(resp['data']) == 1:
@@ -140,14 +147,23 @@ class Twitch:
         return resp['data'][0]['id']
 
     def get_api_decoded_response(self, url):
-        headers = {'Client-ID': CLIENT_ID}
-        req = Request(url, headers=headers)
-        try:
-            resp = urlopen(req).read()
-            decoded = json.loads(resp)
-            return decoded
-        except HTTPError as e:
-            return e
+
+      access_code = get_api_access_token()
+
+      headers = {'client_id': TWITCH_API_KEY, 'Authorization': 'Bearer ' + access_code}
+      req = Request(TWITCH_API_URL + url)
+
+      req.add_header('Client-Id', TWITCH_API_KEY)
+      req.add_header('Authorization', 'Bearer ' + access_code)
+
+      try:
+          response = urlopen(req).read().decode()
+          response_text = json.loads(response)
+
+          return response_text
+      except HTTPError as e:
+          return e
+
 
 
 class Indicator:
@@ -445,6 +461,70 @@ class Indicator:
         """Quits the applet."""
         self.timeout_thread.cancel()
         gtk.main_quit()
+
+
+# Configuration
+
+def get_api_access_token_from_web():
+        headers = {'client_id': TWITCH_API_KEY, 'client_secret': TWITCH_API_SECRET, 'grant_type': 'client_credentials'}
+        req = Request(TWITCH_ID_URL, urlencode(headers).encode())
+        try:
+            response = urlopen(req).read().decode()
+            response_text = json.loads(response)
+
+            return response_text
+        except HTTPError as e:
+            return e
+
+
+def read_access_token_from_file():
+      token_file = open(TOKEN_FILE, 'r').read()
+      token_file_json = json.loads(token_file)
+      return token_file_json['access_token']
+
+
+def read_expire_date_from_file():
+      token_file = open(TOKEN_FILE, 'r').read()
+      data = json.loads(token_file)
+      expire_date_string = data['expire_date']
+      expire_date = datetime.strptime(expire_date_string, '%Y-%m-%d %H:%M:%S.%f')
+
+      return expire_date
+
+
+def write_access_token_to_file(response):
+      token_file = open(TOKEN_FILE, 'w')
+
+      expire_date = datetime.now() + datetime.timedelta(seconds=response['expires_in'])
+
+      output = {"access_token": response['access_token'], "expire_date": str(expire_date)}
+      json.dump(output, token_file)
+
+
+def get_api_access_token():
+
+     if not os.path.isfile(TOKEN_FILE):
+           print('creating directory...')
+           os.makedirs(CONFIG_DIR, exist_ok=True)
+           # get access token
+           access_token_response = get_api_access_token_from_web()
+           # write token
+           write_access_token_to_file(access_token_response)
+     else:
+           print('config file exists')
+           expire_date = read_expire_date_from_file()
+
+           # check if token has expired
+           if datetime.now() > expire_date:
+                 print('token has expired')
+                 # get access token
+                 access_token_response = get_api_access_token_from_web()
+                 # write token
+                 write_access_token_to_file(access_token_response)
+
+     access_token = read_access_token_from_file()
+
+     return access_token
 
 
 if __name__ == '__main__':
