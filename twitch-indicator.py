@@ -4,6 +4,7 @@ import threading
 import webbrowser
 import json
 from urllib.request import urlopen, Request, HTTPError
+from urllib.parse import urlencode
 import gi
 import os
 from datetime import datetime
