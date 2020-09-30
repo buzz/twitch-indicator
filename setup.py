@@ -31,9 +31,8 @@ setup(
     entry_points={"gui_scripts": ["twitch-indicator = twitch_indicator.__main__:main"]},
     data_files=[
         ("share/applications", ["data/twitch-indicator.desktop"]),
-        ("share/icons", ["data/twitch-indicator.svg"]),
         ("share/glib-2.0/schemas", ["data/apps.twitch-indicator.gschema.xml"]),
-        ("share/twitch-indicator", ["data/twitch-indicator.glade"]),
     ],
+    package_data={"twitch_indicator": ["data/*"]},
     install_requires=["PyGObject"],
 )

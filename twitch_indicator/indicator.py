@@ -8,6 +8,7 @@ from gi.repository import AppIndicator3 as appindicator
 from gi.repository import GLib, Gio, Notify
 from gi.repository import Gtk
 
+from twitch_indicator import get_data_filepath
 from twitch_indicator.constants import SETTINGS_KEY
 from twitch_indicator.twitch import TwitchApi
 
@@ -26,8 +27,7 @@ class Indicator:
         # Create applet
         self.app_indicator = appindicator.Indicator.new(
             "Twitch indicator",
-            # TODO: hardcoded paths seem wrong
-            "/usr/share/icons/twitch-indicator.svg",
+            get_data_filepath("twitch-indicator.svg"),
             appindicator.IndicatorCategory.APPLICATION_STATUS,
         )
         self.app_indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
@@ -91,8 +91,7 @@ class Indicator:
         )
 
         builder = Gtk.Builder()
-        # TODO: hardcoded paths seem wrong
-        builder.add_from_file("/usr/share/twitch-indicator/twitch-indicator.glade")
+        builder.add_from_file(get_data_filepath("twitch-indicator.glade"))
 
         builder.get_object("twitch_username").set_text(
             self.settings.get_string("twitch-username")
