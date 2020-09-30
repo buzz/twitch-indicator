@@ -9,8 +9,7 @@ from urllib.request import HTTPError
 from random import SystemRandom
 
 from gi.repository import AppIndicator3 as appindicator
-from gi.repository import GLib, Gio, Notify
-from gi.repository import Gtk
+from gi.repository import Gdk, Gtk, GLib, Gio, Notify
 
 from twitch_indicator import get_data_filepath
 from twitch_indicator.constants import (
@@ -155,7 +154,6 @@ class Indicator:
 
     def settings_dialog(self, _):
         """Shows applet settings dialog."""
-        # TODO center dialog
         dialog = Gtk.Dialog("Settings", None, 0)
         dialog.add_buttons(
             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK
@@ -179,6 +177,7 @@ class Indicator:
 
         box = dialog.get_content_area()
         box.add(builder.get_object("grid1"))
+        dialog.set_position(Gtk.WindowPosition.CENTER)
         response = dialog.run()
 
         if response == Gtk.ResponseType.OK:
