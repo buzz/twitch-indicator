@@ -7,7 +7,7 @@ setup(name='twitch-indicator',
       author='buzz',
       author_email='buzz-AT-l4m1-DOT-de',
       license='ZLIB',
-      url='https://gitlab.com/alexandre1985/twitch-indicator',
+      url='https://github.com/buzz/twitch-indicator',
       scripts=['twitch-indicator.py'],
       data_files=[
           ('share/applications', ['twitch-indicator.desktop']),
