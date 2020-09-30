@@ -2,12 +2,12 @@
 from distutils.core import setup
 
 setup(name='twitch-indicator',
-      version='0.28',
+      version='0.30',
       description='Twitch.tv indicator for Linux. Tracks your followed channels and notifies when they go live.',
       author='buzz',
       author_email='buzz-AT-l4m1-DOT-de',
       license='ZLIB',
-      url='https://github.com/buzz/twitch-indicator',
+      url='https://gitlab.com/alexandre1985/twitch-indicator',
       scripts=['twitch-indicator.py'],
       data_files=[
           ('share/applications', ['twitch-indicator.desktop']),

@@ -1,7 +1,1 @@
-*.glade~
-*~
-.DS_Store
-ThumbsDB
-\#*#
-.#*
-*.pyc
+build/
