@@ -3,8 +3,8 @@
   <schema id="apps.twitch-indicator" path="/apps/twitch-indicator/">
     <key type="s" name="twitch-username">
       <default>"twitch"</default>
-      <summary>Your twitch.tv username</summary>
-      <description>Twitch.tv username, which will be used to fetch followed channels.</description>
+      <summary>Your Twitch username</summary>
+      <description>Twitch username, which will be used to fetch followed channels.</description>
     </key>
 
     <key type="b" name="enable-notifications">

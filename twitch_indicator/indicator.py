@@ -63,7 +63,7 @@ class Indicator:
         self.twitch.clear_cache()
 
     def open_link(self, _, url):
-        """Opens link in a default browser."""
+        """Opens link in default browser."""
         webbrowser.open_new_tab(url)
 
     def refresh_streams_init(self, _, button_activate=False):
@@ -185,7 +185,7 @@ class Indicator:
             GLib.idle_add(
                 self.abort_refresh,
                 None,
-                "Twitch.tv username is not set",
+                "Twitch username is not set",
                 "Setup your username in settings",
             )
             return
@@ -198,7 +198,7 @@ class Indicator:
                 GLib.idle_add(
                     self.abort_refresh,
                     None,
-                    "Cannot resolve Twitch.tv username",
+                    "Cannot resolve Twitch username",
                     "Setup your username in settings",
                 )
                 return
@@ -212,7 +212,7 @@ class Indicator:
             GLib.idle_add(
                 self.abort_refresh,
                 followed_channels,
-                "Cannot retrieve channel list from Twitch.tv",
+                "Cannot retrieve channel list from Twitch",
                 f"Retrying in {interval} minutes...",
             )
             return

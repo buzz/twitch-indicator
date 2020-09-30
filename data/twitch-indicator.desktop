@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=twitch-indicator
-Comment=Twitch.tv indicator for Linux. Tracks your followed channels and notifies when they go live.
+Comment=Twitch indicator for Linux. Tracks your followed channels and notifies when they go live.
 Exec=twitch-indicator
 Icon=twitch-indicator
 Terminal=false

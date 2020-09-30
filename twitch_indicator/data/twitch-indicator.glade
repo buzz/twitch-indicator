@@ -22,7 +22,7 @@
       <object class="GtkLabel" id="label5">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="tooltip_text" translatable="yes">Your twitch.tv username.</property>
+        <property name="tooltip_text" translatable="yes">Your Twitch username.</property>
         <property name="halign">end</property>
         <property name="margin_right">2</property>
         <property name="label" translatable="yes">Twitch username:</property>
