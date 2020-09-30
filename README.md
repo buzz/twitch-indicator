@@ -1,5 +1,8 @@
 # Twitch Indicator
 
+*This program is not affiliated, authorized, endorsed by, or in any way
+officially connected to Twitch.*
+
 ![](http://i.imgur.com/1yXOF6S.png)
 
 Twitch.tv indicator for Linux. Tracks your followed channels and notifies when they go live.
