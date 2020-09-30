@@ -83,7 +83,6 @@ class Indicator:
         if os.path.isfile(token_path):
             with open(token_path, "r") as token_file:
                 self.token = token_file.read()
-                self.refresh_streams_init(None)
         else:
             self.acquire_token()
             with open(token_path, "w") as token_file:
@@ -132,13 +131,14 @@ class Indicator:
         assert hash_params["state"][0] == state
         [self.token] = hash_params["access_token"]
 
-    def open_link(self, _, url):
+    @staticmethod
+    def open_link(_, url):
         """Opens link in default browser."""
         webbrowser.open_new_tab(url)
 
     def refresh_streams_init(self, _, button_activate=False):
         """"Refresh streams."""
-        self.twitch = TwitchApi()
+        self.twitch = TwitchApi(self.token)
 
         # Initializes thread for stream refreshing.
         self.thread = threading.Thread(target=self.refresh_streams)
@@ -155,6 +155,7 @@ class Indicator:
 
     def settings_dialog(self, _):
         """Shows applet settings dialog."""
+        # TODO center dialog
         dialog = Gtk.Dialog("Settings", None, 0)
         dialog.add_buttons(
             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK
@@ -226,9 +227,11 @@ class Indicator:
         self.menu_items[2].set_submenu(streams_menu)
 
         # Order streams by alphabetical order
+        # TODO: sort by viewer count
         streams_ordered = sorted(streams, key=lambda k: k["name"].lower())
 
         for index, stream in enumerate(streams_ordered):
+            # TODO: add image?, add viewer count
             menu_entry = Gtk.MenuItem(label=f"{stream['name']} - {stream['game']}")
             streams_menu.append(menu_entry)
             streams_menu.get_children()[index].connect(
@@ -261,9 +264,8 @@ class Indicator:
             return
 
         if self.user_id is None:
-            self.user_id = self.twitch.get_user_id(
-                self.settings.get_string("twitch-username")
-            )
+            username = self.settings.get_string("twitch-username")
+            self.user_id = self.twitch.get_user_id(username)
             if self.user_id is None:
                 GLib.idle_add(
                     self.abort_refresh,
@@ -288,7 +290,7 @@ class Indicator:
             return
 
         # Are there channels that the user follows?
-        elif followed_channels is None:
+        if followed_channels is None:
             return
 
         # Fetch live streams
@@ -333,7 +335,7 @@ class Indicator:
 
         # Push notifications of new streams
         if self.settings.get_boolean("enable-notifications"):
-            self.push_notifications(notify_list)
+            GLib.idle_add(self.push_notifications, notify_list)
 
     def abort_refresh(self, exception, message, description):
         """Updates menu with failure state message."""
@@ -378,14 +380,16 @@ class Indicator:
 
             Notify.init("Twitch Notification")
             notification = Notify.Notification.new(
-                f"{stream['name']} just went LIVE!", body, ""
+                f"{stream['name']} is LIVE!", body, ""
             )
 
-            # Fixed deprecation warning
+            # TODO: open stream when clicking on notification
+
             notification.set_image_from_pixbuf(stream["pixbuf"].get_pixbuf())
             notification.show()
 
-    def main(self):
+    @staticmethod
+    def main():
         """Main indicator function."""
         Gtk.main()
 
