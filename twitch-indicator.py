@@ -181,8 +181,7 @@ class Indicator:
         # Create applet
         self.a = appindicator.Indicator.new(
             'Twitch indicator',
-            # TODO: hardcoded paths seem wrong
-            '/usr/share/icons/twitch-indicator.svg',
+            'twitch-indicator',
             appindicator.IndicatorCategory.APPLICATION_STATUS
         )
         self.a.set_status(appindicator.IndicatorStatus.ACTIVE)
