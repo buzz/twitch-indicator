@@ -20,4 +20,7 @@ twitch-indicator &
 
 ## License
 
-This code is free software; you can redistribute it and/or modify it under the terms of the zlib License. A copy of this license can be found in the included LICENSE file.
+Licensed under GNU General Public License v2.0.
+
+Forked from [twitch-indicator](https://github.com/rolandasb/twitch-indicator) by
+[Rolandas Barysas](https://github.com/rolandasb).
