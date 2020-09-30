@@ -3,7 +3,7 @@
 #              alexandre1985 <email not offered>
 pkgname=twitch-indicator
 _gitname=twitch-indicator
-pkgver=0.28.r5.g3a74d27
+pkgver=0.30.r0.g06a42be
 pkgrel=1
 pkgdesc="Twitch.tv indicator for Linux. Tracks your followed channels and notifies when they go live."
 arch=("any")
