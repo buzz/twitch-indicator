@@ -1,7 +1,8 @@
-*.glade~
 *~
 .DS_Store
 ThumbsDB
 \#*#
 .#*
 *.pyc
+/*.egg-info
+/venv
