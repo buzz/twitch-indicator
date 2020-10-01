@@ -249,9 +249,9 @@ class Indicator:
             icon = Gtk.Image.new_from_pixbuf(pixbuf)
             box.pack_start(icon, False, False, 0)
             label_main = Gtk.Label()
-            markup = f"<b>{stream['name']}</b>"
+            markup = f"<b>{GLib.markup_escape_text(stream['name'])}</b>"
             if self.settings.get_boolean("show-game-playing"):
-                markup = f"{markup} - {stream['game']}"
+                markup = f"{markup} - {GLib.markup_escape_text(stream['game'])}"
             label_main.set_markup(markup)
             label_main.set_halign(Gtk.Align.START)
             box.pack_start(label_main, True, True, 0)
