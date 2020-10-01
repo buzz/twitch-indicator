@@ -411,11 +411,12 @@ class Indicator:
 
         if not self.first_notification_run:
             for stream in streams:
+                msg = f"{stream['name']} just went LIVE!"
                 viewer_count = format_viewer_count(stream["viewer_count"])
-                descr = f"<b>{stream['title']}</b>"
+                descr = f"{stream['title']}\n\n"
                 if self.settings.get_boolean("show-game-playing"):
-                    descr = f"{descr}\nCurrently playing: {stream['game']}"
-                descr = f"{descr}\nViewers: {viewer_count}"
+                    descr = f"{descr}Playing: <b>{stream['game']}</b>\n"
+                descr = f"{descr}Viewers: <b>{viewer_count}</b>"
 
                 action = (
                     "watch",
@@ -424,7 +425,7 @@ class Indicator:
                     stream["url"],
                 )
                 self.notifications.show(
-                    f"{stream['name']} is LIVE!",
+                    msg,
                     descr,
                     action=action,
                     image=stream["pixbuf"].get_pixbuf(),
