@@ -225,9 +225,8 @@ class Indicator:
         self.menu_items.insert(3, Gtk.SeparatorMenuItem())
         self.menu_items[2].set_submenu(streams_menu)
 
-        # Order streams by alphabetical order
-        # TODO: sort by viewer count
-        streams_ordered = sorted(streams, key=lambda k: k["name"].lower())
+        # Order streams by viewer count
+        streams_ordered = sorted(streams, key=lambda k: -k["viewer_count"])
 
         for index, stream in enumerate(streams_ordered):
             # TODO: add image?, add viewer count

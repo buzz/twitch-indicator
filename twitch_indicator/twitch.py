@@ -101,6 +101,7 @@ class TwitchApi:
                 "image": channel_info["profile_image_url"],
                 "pixbuf": image_loader,
                 "url": f"{TWITCH_WEB_URL}{channel_info['login']}",
+                "viewer_count": stream["viewer_count"],
             }
             streams.append(stream)
 
