@@ -398,9 +398,11 @@ class Indicator:
         """
 
         for stream in streams:
-            body = str(stream["title"])
+            viewer_count = format_viewer_count(stream["viewer_count"])
+            body = f"<b>{stream['title']}</b>"
             if self.settings.get_boolean("show-game-playing"):
-                body = f"Currently playing: {stream['game']}\n{body}"
+                body = f"{body}\nCurrently playing: {stream['game']}"
+            body = f"{body}\nViewers: {viewer_count}"
 
             Notify.init("Twitch Notification")
             notification = Notify.Notification.new(
