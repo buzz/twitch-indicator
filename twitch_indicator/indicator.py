@@ -402,7 +402,7 @@ class Indicator:
 
         if isinstance(exception, HTTPError):
             message = str(exception.code) + ": " + message
-        self.notifications.show(message, description, category="error")
+        self.notifications.show(message, description, category="network.error")
 
     def push_notifications(self, streams):
         """Pushes notifications of every stream, passed as a list of
@@ -428,6 +428,7 @@ class Indicator:
                     msg,
                     descr,
                     action=action,
+                    category="presence.online",
                     image=stream["pixbuf"].get_pixbuf(),
                 )
         else:
