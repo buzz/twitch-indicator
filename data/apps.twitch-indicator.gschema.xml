@@ -16,7 +16,13 @@
     <key type="b" name="show-game-playing">
       <default>true</default>
       <summary>Show played game</summary>
-      <description>Shows the game the streamer is playing in the notification as well.</description>
+      <description>Shows the game the streamer is playing in notifications and menu.</description>
+    </key>
+
+    <key type="b" name="show-viewer-count">
+      <default>true</default>
+      <summary>Show viewer count</summary>
+      <description>Shows viewer count in notifications and menu.</description>
     </key>
 
     <key type="i" name="refresh-interval">

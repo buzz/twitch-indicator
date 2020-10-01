@@ -45,7 +45,7 @@ class Indicator:
         self.notifications = Notifications()
 
         # Avoid initial notification spam
-        self.first_notification_run = True
+        self.first_notification_run = False
 
         # Create applet
         self.app_indicator = appindicator.Indicator.new(
@@ -184,7 +184,7 @@ class Indicator:
         )
 
         builder = Gtk.Builder()
-        builder.add_from_file(get_data_filepath("twitch-indicator.glade"))
+        builder.add_from_file(get_data_filepath("twitch-indicator-settings.glade"))
 
         builder.get_object("twitch_username").set_text(
             self.settings.get_string("twitch-username")
@@ -194,6 +194,9 @@ class Indicator:
         )
         builder.get_object("show_game").set_active(
             self.settings.get_boolean("show-game-playing")
+        )
+        builder.get_object("show_viewer_count").set_active(
+            self.settings.get_boolean("show-viewer-count")
         )
         builder.get_object("refresh_interval").set_value(
             self.settings.get_int("refresh-interval")
@@ -215,12 +218,16 @@ class Indicator:
             self.settings.set_boolean(
                 "show-game-playing", builder.get_object("show_game").get_active()
             )
+            self.settings.set_boolean(
+                "show-viewer-count",
+                builder.get_object("show_viewer_count").get_active(),
+            )
             self.settings.set_int(
                 "refresh-interval",
                 builder.get_object("refresh_interval").get_value_as_int(),
             )
-
             self.clear_cache()
+
         elif response == Gtk.ResponseType.CANCEL:
             pass
 
@@ -255,6 +262,8 @@ class Indicator:
         for index, stream in enumerate(streams_ordered):
             menu_entry = Gtk.MenuItem()
             box = Gtk.Box(Gtk.Orientation.HORIZONTAL, 8)
+
+            # Channel icon
             pixbuf = (
                 stream["pixbuf"]
                 .get_pixbuf()
@@ -262,17 +271,23 @@ class Indicator:
             )
             icon = Gtk.Image.new_from_pixbuf(pixbuf)
             box.pack_start(icon, False, False, 0)
+
+            # Channel label
             label_main = Gtk.Label()
             markup = f"<b>{GLib.markup_escape_text(stream['name'])}</b>"
             if self.settings.get_boolean("show-game-playing"):
-                markup = f"{markup} - {GLib.markup_escape_text(stream['game'])}"
+                markup += f"- {GLib.markup_escape_text(stream['game'])}"
             label_main.set_markup(markup)
             label_main.set_halign(Gtk.Align.START)
             box.pack_start(label_main, True, True, 0)
-            label_viewer_count = Gtk.Label()
-            viewer_count = format_viewer_count(stream["viewer_count"])
-            label_viewer_count.set_markup(f"<small>{viewer_count}</small>")
-            box.pack_start(label_viewer_count, False, False, 0)
+
+            # Channel viewer count
+            if self.settings.get_boolean("show-viewer-count"):
+                label_viewer_count = Gtk.Label()
+                viewer_count = format_viewer_count(stream["viewer_count"])
+                label_viewer_count.set_markup(f"<small>{viewer_count}</small>")
+                box.pack_start(label_viewer_count, False, False, 0)
+
             menu_entry.add(box)
             streams_menu.append(menu_entry)
             streams_menu.get_children()[index].connect(
@@ -413,12 +428,19 @@ class Indicator:
 
         if not self.first_notification_run:
             for stream in streams:
+                show_game_playing = self.settings.get_boolean("show-game-playing")
+                show_viewer_count = self.settings.get_boolean("show-viewer-count")
+
                 msg = f"{stream['name']} just went LIVE!"
-                viewer_count = format_viewer_count(stream["viewer_count"])
-                descr = f"{stream['title']}\n\n"
-                if self.settings.get_boolean("show-game-playing"):
-                    descr = f"{descr}Playing: <b>{stream['game']}</b>\n"
-                descr = f"{descr}Viewers: <b>{viewer_count}</b>"
+                descr = f"{stream['title']}"
+
+                if show_game_playing or show_viewer_count:
+                    descr += "\n"
+                    if show_game_playing:
+                        descr += f"\nPlaying: <b>{stream['game']}</b>"
+                    if show_viewer_count:
+                        viewer_count = format_viewer_count(stream["viewer_count"])
+                        descr += f"\nViewers: <b>{viewer_count}</b>"
 
                 action = (
                     "watch",
