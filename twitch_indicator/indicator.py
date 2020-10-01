@@ -9,7 +9,7 @@ from urllib.request import HTTPError
 from random import SystemRandom
 
 from gi.repository import AppIndicator3 as appindicator
-from gi.repository import GdkPixbuf, Gtk, GLib, Gio, Notify
+from gi.repository import GdkPixbuf, Gtk, GLib, Gio
 
 from twitch_indicator import get_data_filepath
 from twitch_indicator.constants import (
@@ -19,6 +19,7 @@ from twitch_indicator.constants import (
     TWITCH_CLIENT_ID,
     UNICODE_ASCII_CHARACTER_SET,
 )
+from twitch_indicator.notifications import Notifications
 from twitch_indicator.twitch import TwitchApi
 
 
@@ -40,6 +41,7 @@ class Indicator:
         self.timeout_thread = None
         self.twitch = None
         self.token = None
+        self.notifications = Notifications()
 
         # Create applet
         self.app_indicator = appindicator.Indicator.new(
@@ -48,9 +50,6 @@ class Indicator:
             appindicator.IndicatorCategory.APPLICATION_STATUS,
         )
         self.app_indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
-
-        # Init notifications
-        Notify.init("Twitch Indicator")
 
         # Load settings
         self.settings = Gio.Settings.new(SETTINGS_KEY)
@@ -76,6 +75,16 @@ class Indicator:
         self.menu.show_all()
 
         self.check_auth_token()
+
+    @staticmethod
+    def main():
+        """Main indicator function."""
+        Gtk.main()
+
+    def quit(self, _):
+        """Quits the applet."""
+        self.timeout_thread.cancel()
+        Gtk.main_quit()
 
     def clear_cache(self):
         """Clear cache."""
@@ -390,7 +399,7 @@ class Indicator:
 
         if isinstance(exception, HTTPError):
             message = str(exception.code) + ": " + message
-        Notify.Notification.new(message, description, "error").show()
+        self.notifications.show(message, description, category="error")
 
     def push_notifications(self, streams):
         """Pushes notifications of every stream, passed as a list of
@@ -399,26 +408,27 @@ class Indicator:
 
         for stream in streams:
             viewer_count = format_viewer_count(stream["viewer_count"])
-            body = f"<b>{stream['title']}</b>"
+            descr = f"<b>{stream['title']}</b>"
             if self.settings.get_boolean("show-game-playing"):
-                body = f"{body}\nCurrently playing: {stream['game']}"
-            body = f"{body}\nViewers: {viewer_count}"
+                descr = f"{descr}\nCurrently playing: {stream['game']}"
+            descr = f"{descr}\nViewers: {viewer_count}"
 
-            notification = Notify.Notification.new(
-                f"{stream['name']} is LIVE!", body, ""
+            action = (
+                "watch",
+                "Watch",
+                self.on_notification_watch,
+                stream["url"],
+            )
+            self.notifications.show(
+                f"{stream['name']} is LIVE!",
+                descr,
+                action=action,
+                image=stream["pixbuf"].get_pixbuf(),
             )
 
-            # TODO: open stream when clicking on notification
-
-            notification.set_image_from_pixbuf(stream["pixbuf"].get_pixbuf())
-            notification.show()
+    # UI callbacks
 
     @staticmethod
-    def main():
-        """Main indicator function."""
-        Gtk.main()
-
-    def quit(self, _):
-        """Quits the applet."""
-        self.timeout_thread.cancel()
-        Gtk.main_quit()
+    def on_notification_watch(_, __, url):
+        """Callback for notification stream watch action."""
+        webbrowser.open_new_tab(url)
