@@ -43,6 +43,9 @@ class Indicator:
         self.token = None
         self.notifications = Notifications()
 
+        # Avoid initial notification spam
+        self.first_notification_run = True
+
         # Create applet
         self.app_indicator = appindicator.Indicator.new(
             "Twitch indicator",
@@ -406,25 +409,28 @@ class Indicator:
         dictionaries.
         """
 
-        for stream in streams:
-            viewer_count = format_viewer_count(stream["viewer_count"])
-            descr = f"<b>{stream['title']}</b>"
-            if self.settings.get_boolean("show-game-playing"):
-                descr = f"{descr}\nCurrently playing: {stream['game']}"
-            descr = f"{descr}\nViewers: {viewer_count}"
+        if not self.first_notification_run:
+            for stream in streams:
+                viewer_count = format_viewer_count(stream["viewer_count"])
+                descr = f"<b>{stream['title']}</b>"
+                if self.settings.get_boolean("show-game-playing"):
+                    descr = f"{descr}\nCurrently playing: {stream['game']}"
+                descr = f"{descr}\nViewers: {viewer_count}"
 
-            action = (
-                "watch",
-                "Watch",
-                self.on_notification_watch,
-                stream["url"],
-            )
-            self.notifications.show(
-                f"{stream['name']} is LIVE!",
-                descr,
-                action=action,
-                image=stream["pixbuf"].get_pixbuf(),
-            )
+                action = (
+                    "watch",
+                    "Watch",
+                    self.on_notification_watch,
+                    stream["url"],
+                )
+                self.notifications.show(
+                    f"{stream['name']} is LIVE!",
+                    descr,
+                    action=action,
+                    image=stream["pixbuf"].get_pixbuf(),
+                )
+        else:
+            self.first_notification_run = False
 
     # UI callbacks
 
