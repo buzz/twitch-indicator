@@ -49,6 +49,9 @@ class Indicator:
         )
         self.app_indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
 
+        # Init notifications
+        Notify.init("Twitch Indicator")
+
         # Load settings
         self.settings = Gio.Settings.new(SETTINGS_KEY)
 
@@ -385,9 +388,6 @@ class Indicator:
 
         self.menu.show_all()
 
-        # Push notification
-        Notify.init("Twitch Indicator")
-
         if isinstance(exception, HTTPError):
             message = str(exception.code) + ": " + message
         Notify.Notification.new(message, description, "error").show()
@@ -404,7 +404,6 @@ class Indicator:
                 body = f"{body}\nCurrently playing: {stream['game']}"
             body = f"{body}\nViewers: {viewer_count}"
 
-            Notify.init("Twitch Notification")
             notification = Notify.Notification.new(
                 f"{stream['name']} is LIVE!", body, ""
             )
