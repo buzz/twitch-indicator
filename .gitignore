@@ -6,3 +6,5 @@ ThumbsDB
 *.pyc
 /*.egg-info
 /venv
+/dist
+/build
