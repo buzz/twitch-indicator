@@ -8,6 +8,7 @@ TWITCH_WEB_URL = "https://www.twitch.tv/"
 TWITCH_API_URL = "https://api.twitch.tv/helix/"
 TWITCH_AUTH_URL = "https://id.twitch.tv/oauth2/authorize"
 TWITCH_AUTH_REDIRECT_URI = "twitch-indicator-auth://authorize"
+TWITCH_AUTH_SCOPES = "user:read:email"
 TWITCH_CLIENT_ID = "lp42a3ot0vosrva84upd4up077f6vd"
 TWITCH_API_LIMIT = 100
 DEFAULT_AVATAR = (

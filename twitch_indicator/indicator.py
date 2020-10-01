@@ -16,6 +16,7 @@ from twitch_indicator.constants import (
     SETTINGS_KEY,
     TWITCH_AUTH_REDIRECT_URI,
     TWITCH_AUTH_URL,
+    TWITCH_AUTH_SCOPES,
     TWITCH_CLIENT_ID,
     UNICODE_ASCII_CHARACTER_SET,
 )
@@ -123,6 +124,7 @@ class Indicator:
             "client_id": TWITCH_CLIENT_ID,
             "state": state,
             "redirect_uri": TWITCH_AUTH_REDIRECT_URI,
+            "scope": TWITCH_AUTH_SCOPES,
         }
         url_parts[4] = urlencode(query)
         url = urlunparse(url_parts)
