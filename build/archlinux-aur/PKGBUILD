@@ -3,13 +3,13 @@
 #              alexandre1985 <email not offered>
 pkgname=twitch-indicator
 _gitname=twitch-indicator
-pkgver=0.30.r0.g06a42be
+pkgver=0.30.r1.gdae9df6
 pkgrel=1
 pkgdesc="Twitch.tv indicator for Linux. Tracks your followed channels and notifies when they go live."
 arch=("any")
 url="https://github.com/buzz/twitch-indicator"
 license=("ZLIB")
-depends=("python3" "python-gobject" "desktop-file-utils" "libappindicator-gtk3" "python-pyxdg")
+depends=("python3" "python-gobject" "desktop-file-utils" "libappindicator-gtk3")
 makedepends=("git")
 options=(!emptydirs)
 source=("git+https://gitlab.com/alexandre1985/twitch-indicator.git")
