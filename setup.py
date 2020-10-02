@@ -39,6 +39,7 @@ setup(
             "share/applications",
             ["data/twitch-indicator.desktop", "data/twitch-indicator-auth.desktop"],
         ),
+        ("share/icons", ["twitch_indicator/data/twitch-indicator.svg"]),
         ("share/glib-2.0/schemas", ["data/apps.twitch-indicator.gschema.xml"]),
     ],
     package_data={"twitch_indicator": ["data/*"]},
