@@ -139,6 +139,7 @@ disable=print-statement,
         deprecated-sys-function,
         exception-escape,
         comprehension-escape,
+        missing-module-docstring,
         C0330,
         C0326
 
