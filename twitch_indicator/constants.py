@@ -1,4 +1,3 @@
-"""Constants"""
 import os.path
 from gi.repository import GLib
 
@@ -20,3 +19,5 @@ UNICODE_ASCII_CHARACTER_SET = (
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 CONFIG_DIR = os.path.join(GLib.get_user_config_dir(), "twitch-indicator")
+AUTH_TOKEN_PATH = os.path.join(CONFIG_DIR, "authtoken")
+AUTH_SOCKET_PATH = os.path.join(os.sep, "tmp", "twitch-indicator-auth-socket")
