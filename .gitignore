@@ -8,3 +8,4 @@ ThumbsDB
 /venv
 /dist
 /build
+/.vscode
