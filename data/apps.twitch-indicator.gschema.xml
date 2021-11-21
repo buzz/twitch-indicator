@@ -25,6 +25,12 @@
       <description>Shows viewer count in notifications and menu.</description>
     </key>
 
+    <key type="s" name="open-command">
+      <default>"{browser} {url}"</default>
+      <summary>Open Command</summary>
+      <description>Which command is used to open the stream. {browser} and {url} are available as the default browser and the url of the stream.</description>
+    </key>
+
     <key type="i" name="refresh-interval">
       <default>5</default>
       <summary>Refresh interval.</summary>

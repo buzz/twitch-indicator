@@ -1,4 +1,5 @@
 import webbrowser
+import os
 
 from gi.repository import Notify
 
@@ -71,4 +72,6 @@ class Notifications:
     @staticmethod
     def on_notification_watch(_, __, url):
         """Callback for notification stream watch action."""
-        webbrowser.open_new_tab(url)
+        browser = webbrowser.get().basename
+        cmd = self.app.settings.get().get_string("open-command")
+        os.system(cmd.format(url=url, browser=browser))
