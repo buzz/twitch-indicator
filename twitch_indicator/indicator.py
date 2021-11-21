@@ -161,5 +161,5 @@ class Indicator:
 
     def on_stream_menu(self, _, url):
         """Callback for stream menu item."""
-        cmd = self.app.settings.get_string("open-command")
+        cmd = self.app.settings.get().get_string("open-command")
         os.system(cmd.format(url=url))
