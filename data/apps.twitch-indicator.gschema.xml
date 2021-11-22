@@ -26,9 +26,9 @@
     </key>
 
     <key type="s" name="open-command">
-      <default>firefox {url}</default>
+      <default>"{browser} {url}"</default>
       <summary>Open Command</summary>
-      <description>Which command is used to open the stream.</description>
+      <description>Which command is used to open the stream. {browser} and {url} are available as the default browser and the url of the stream.</description>
     </key>
 
     <key type="i" name="refresh-interval">

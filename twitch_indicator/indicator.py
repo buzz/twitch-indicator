@@ -1,4 +1,5 @@
 import webbrowser
+import os
 from urllib.request import HTTPError
 
 from gi.repository import AppIndicator3
@@ -160,4 +161,6 @@ class Indicator:
 
     def on_stream_menu(self, _, url):
         """Callback for stream menu item."""
-        webbrowser.open_new_tab(url)
+        browser = webbrowser.get().basename
+        cmd = self.app.settings.get().get_string("open-command")
+        os.system(cmd.format(url=url, browser=browser))

@@ -34,7 +34,6 @@ class Settings:
         builder.get_object("show_viewer_count").set_active(
             self.settings.get_boolean("show-viewer-count")
         )
-        print("test?")
         builder.get_object("open_command").set_text(
             self.settings.get_string("open-command")
         )
