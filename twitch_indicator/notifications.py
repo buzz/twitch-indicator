@@ -69,9 +69,8 @@ class Notifications:
         """Called when notification is closed."""
         self.notifications.remove(notification)
 
-    @staticmethod
-    def on_notification_watch(_, __, url):
+    def on_notification_watch(self, _, __, url):
         """Callback for notification stream watch action."""
         browser = webbrowser.get().basename
-        cmd = self.app.settings.get().get_string("open-command")
+        cmd = self.settings.get().get_string("open-command")
         os.system(cmd.format(url=url, browser=browser))
