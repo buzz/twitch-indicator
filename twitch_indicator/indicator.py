@@ -66,9 +66,9 @@ class Indicator:
         if streams_ordered:
             self.menu_item_channels.set_label(f"Live channels ({len(streams)})")
             self.menu_item_channels.set_sensitive(True)
+
             for index, stream in enumerate(streams_ordered):
-                menu_entry = Gtk.MenuItem()
-                box = Gtk.Box(Gtk.Orientation.HORIZONTAL, 8)
+                menu_entry = Gtk.ImageMenuItem()
 
                 # Channel icon
                 pixbuf = (
@@ -77,26 +77,21 @@ class Indicator:
                     .scale_simple(32, 32, GdkPixbuf.InterpType.BILINEAR)
                 )
                 icon = Gtk.Image.new_from_pixbuf(pixbuf)
-                box.pack_start(icon, False, False, 0)
+                menu_entry.set_image(icon)
 
                 # Channel label
-                label_main = Gtk.Label()
+                label = Gtk.Label()
                 markup = f"<b>{GLib.markup_escape_text(stream['name'])}</b>"
                 if settings.get_boolean("show-game-playing") and stream["game"]:
                     markup += f" • {GLib.markup_escape_text(stream['game'])}"
-                label_main.set_markup(markup)
-                label_main.set_halign(Gtk.Align.START)
-                box.pack_start(label_main, True, True, 0)
-
-                # Channel viewer count
                 if settings.get_boolean("show-viewer-count"):
-                    label_viewer_count = Gtk.Label()
                     viewer_count = format_viewer_count(stream["viewer_count"])
-                    label_viewer_count.set_markup(f"<small>{viewer_count}</small>")
-                    label_viewer_count.set_halign(Gtk.Align.END)
-                    box.pack_start(label_viewer_count, False, False, 10)
+                    markup += f" (<small>{viewer_count}</small>)"
 
-                menu_entry.add(box)
+                label.set_markup(markup)
+                label.set_halign(Gtk.Align.START)
+                menu_entry.add(label)
+
                 streams_menu.append(menu_entry)
                 streams_menu.get_children()[index].connect(
                     "activate", self.on_stream_menu, stream["url"]
