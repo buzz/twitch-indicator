@@ -28,129 +28,105 @@ class Indicator:
         """Setup menu."""
         self.menu = Gtk.Menu()
 
-        self.menu_items = [
-            Gtk.MenuItem(label="Check now"),
-            Gtk.SeparatorMenuItem(),
-            Gtk.MenuItem(label="Choose channels"),
-            Gtk.MenuItem(label="Settings"),
-            Gtk.MenuItem(label="Quit"),
-        ]
-        self.menu_items[0].connect("activate", self.on_check_now)
-        self.menu_items[-3].connect("activate", self.on_channel_chooser)
-        self.menu_items[-2].connect("activate", self.on_settings)
-        self.menu_items[-1].connect("activate", self.on_quit)
-        for i in self.menu_items:
-            self.menu.append(i)
+        self.menu_item_check_now = Gtk.MenuItem(label="Check now")
+        self.menu_item_check_now.connect("activate", self.on_check_now)
+
+        self.menu_item_channels = Gtk.MenuItem(label="Live channels")
+        self.menu_item_channels.set_sensitive(False)
+
+        self.menu_item_choose_channels = Gtk.MenuItem(label="Choose channels")
+        self.menu_item_choose_channels.connect("activate", self.on_channel_chooser)
+
+        self.menu_item_settings = Gtk.MenuItem(label="Settings")
+        self.menu_item_settings.connect("activate", self.on_settings)
+
+        self.menu_item_quit = Gtk.MenuItem(label="Quit")
+        self.menu_item_quit.connect("activate", self.on_quit)
 
         self.app_indicator.set_menu(self.menu)
-        self.menu.show_all()
+        self.refresh_menu_items()
 
     def disable_check_now(self):
         """Disables check now button."""
-        self.menu.get_children()[0].set_sensitive(False)
-        self.menu.get_children()[0].set_label("Checking...")
+        self.menu_item_check_now.set_sensitive(False)
+        self.menu_item_check_now.set_label("Checking...")
 
     def enable_check_now(self):
         """Enables check now button."""
-        self.menu.get_children()[0].set_sensitive(True)
-        self.menu.get_children()[0].set_label("Check now")
+        self.menu_item_check_now.set_sensitive(True)
+        self.menu_item_check_now.set_label("Check now")
 
     def disable_channel_chooser(self):
         """Disables channel chooser button."""
-        self.menu.get_children()[-3].set_sensitive(False)
+        self.menu_item_choose_channels.set_sensitive(False)
 
     def enable_channel_chooser(self):
         """Enables channel chooser button."""
-        self.menu.get_children()[-3].set_sensitive(True)
+        self.menu_item_choose_channels.set_sensitive(True)
 
     def add_streams_menu(self, streams):
         """Adds streams list to menu."""
         settings = self.app.settings.get()
 
-        # Remove live streams menu if already exists
-        if len(self.menu_items) > 5:
-            self.menu_items.pop(2)
-            self.menu_items.pop(1)
-
-        # Create menu
         streams_menu = Gtk.Menu()
-        self.menu_items.insert(2, Gtk.MenuItem(label=f"Live channels ({len(streams)})"))
-        self.menu_items.insert(3, Gtk.SeparatorMenuItem())
-        self.menu_items[2].set_submenu(streams_menu)
+        self.menu_item_channels.set_submenu(streams_menu)
 
         # Order streams by viewer count
         streams_ordered = sorted(streams, key=lambda k: -k["viewer_count"])
 
-        for index, stream in enumerate(streams_ordered):
-            menu_entry = Gtk.MenuItem()
-            box = Gtk.Box(Gtk.Orientation.HORIZONTAL, 8)
+        if streams_ordered:
+            self.menu_item_channels.set_label(f"Live channels ({len(streams)})")
+            self.menu_item_channels.set_sensitive(True)
+            for index, stream in enumerate(streams_ordered):
+                menu_entry = Gtk.MenuItem()
+                box = Gtk.Box(Gtk.Orientation.HORIZONTAL, 8)
 
-            # Channel icon
-            pixbuf = (
-                stream["pixbuf"]
-                .get_pixbuf()
-                .scale_simple(32, 32, GdkPixbuf.InterpType.BILINEAR)
-            )
-            icon = Gtk.Image.new_from_pixbuf(pixbuf)
-            box.pack_start(icon, False, False, 0)
+                # Channel icon
+                pixbuf = (
+                    stream["pixbuf"]
+                    .get_pixbuf()
+                    .scale_simple(32, 32, GdkPixbuf.InterpType.BILINEAR)
+                )
+                icon = Gtk.Image.new_from_pixbuf(pixbuf)
+                box.pack_start(icon, False, False, 0)
 
-            # Channel label
-            label_main = Gtk.Label()
-            markup = f"<b>{GLib.markup_escape_text(stream['name'])}</b>"
-            if settings.get_boolean("show-game-playing") and stream["game"]:
-                markup += f" • {GLib.markup_escape_text(stream['game'])}"
-            label_main.set_markup(markup)
-            label_main.set_halign(Gtk.Align.START)
-            box.pack_start(label_main, True, True, 0)
+                # Channel label
+                label_main = Gtk.Label()
+                markup = f"<b>{GLib.markup_escape_text(stream['name'])}</b>"
+                if settings.get_boolean("show-game-playing") and stream["game"]:
+                    markup += f" • {GLib.markup_escape_text(stream['game'])}"
+                label_main.set_markup(markup)
+                label_main.set_halign(Gtk.Align.START)
+                box.pack_start(label_main, True, True, 0)
 
-            # Channel viewer count
-            if settings.get_boolean("show-viewer-count"):
-                label_viewer_count = Gtk.Label()
-                viewer_count = format_viewer_count(stream["viewer_count"])
-                label_viewer_count.set_markup(f"<small>{viewer_count}</small>")
-                box.pack_start(label_viewer_count, False, False, 10)
+                # Channel viewer count
+                if settings.get_boolean("show-viewer-count"):
+                    label_viewer_count = Gtk.Label()
+                    viewer_count = format_viewer_count(stream["viewer_count"])
+                    label_viewer_count.set_markup(f"<small>{viewer_count}</small>")
+                    label_viewer_count.set_halign(Gtk.Align.END)
+                    box.pack_start(label_viewer_count, False, False, 10)
 
-            menu_entry.add(box)
-            streams_menu.append(menu_entry)
-            streams_menu.get_children()[index].connect(
-                "activate", self.on_stream_menu, stream["url"]
-            )
+                menu_entry.add(box)
+                streams_menu.append(menu_entry)
+                streams_menu.get_children()[index].connect(
+                    "activate", self.on_stream_menu, stream["url"]
+                )
+        else:
+            self.menu_item_channels.set_label("No live channels...")
+            self.menu_item_channels.set_sensitive(False)
 
         for i in streams_menu.get_children():
             i.show()
 
-        # Refresh all menu by removing and re-adding menu items
-        for i in self.menu.get_children():
-            self.menu.remove(i)
-
-        for i in self.menu_items:
-            self.menu.append(i)
-
-        self.menu.show_all()
+        self.refresh_menu_items()
 
     def abort_refresh(self, exception, message, description):
         """Updates menu with failure state message."""
-        # Remove previous message if already exists
-        if len(self.menu_items) > 4:
-            self.menu_items.pop(2)
-            self.menu_items.pop(1)
-
-        self.menu_items.insert(2, Gtk.MenuItem(label=message))
-        self.menu_items.insert(3, Gtk.SeparatorMenuItem())
-        self.menu_items[2].set_sensitive(False)
-
-        # Re-enable "Check now" button
-        self.menu_items[0].set_sensitive(True)
-        self.menu_items[0].set_label("Check now")
-
-        # Refresh all menu items
-        for i in self.menu.get_children():
-            self.menu.remove(i)
-
-        for i in self.menu_items:
-            self.menu.append(i)
-
-        self.menu.show_all()
+        self.menu_item_channels.set_label(message)
+        self.menu_item_channels.set_sensitive(False)
+        self.enable_check_now()
+        self.refresh_menu_items()
 
         # Skip error notification on first fetch (internet might not be up)
         if not self.first_fetch:
@@ -160,6 +136,18 @@ class Indicator:
             self.app.notifications.show(message, description, category="network.error")
 
         self.first_fetch = False
+
+    def refresh_menu_items(self):
+        """Refresh all menu by removing and re-adding menu items."""
+        for menu_item in self.menu.get_children():
+            self.menu.remove(menu_item)
+        self.menu.append(self.menu_item_check_now)
+        self.menu.append(self.menu_item_channels)
+        self.menu.append(Gtk.SeparatorMenuItem())
+        self.menu.append(self.menu_item_choose_channels)
+        self.menu.append(self.menu_item_settings)
+        self.menu.append(self.menu_item_quit)
+        self.menu.show_all()
 
     # UI callbacks
 
