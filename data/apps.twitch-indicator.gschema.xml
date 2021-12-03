@@ -36,5 +36,11 @@
       <summary>Refresh interval.</summary>
       <description>How many minutes should indicator wait between refreshing your followed channels.</description>
     </key>
+
+    <key type="s" name="enabled-channel-ids">
+      <default>""</default>
+      <summary>Enabled channels.</summary>
+      <description>Channels for which notifications are enabled.</description>
+    </key>
   </schema>
 </schemalist>

@@ -30,10 +30,12 @@ class Indicator:
         self.menu_items = [
             Gtk.MenuItem(label="Check now"),
             Gtk.SeparatorMenuItem(),
+            Gtk.MenuItem(label="Choose channels"),
             Gtk.MenuItem(label="Settings"),
             Gtk.MenuItem(label="Quit"),
         ]
         self.menu_items[0].connect("activate", self.on_check_now)
+        self.menu_items[-3].connect("activate", self.on_channel_chooser)
         self.menu_items[-2].connect("activate", self.on_settings)
         self.menu_items[-1].connect("activate", self.on_quit)
         for i in self.menu_items:
@@ -42,22 +44,30 @@ class Indicator:
         self.app_indicator.set_menu(self.menu)
         self.menu.show_all()
 
-    def disable_menu(self):
+    def disable_check_now(self):
         """Disables check now button."""
         self.menu.get_children()[0].set_sensitive(False)
         self.menu.get_children()[0].set_label("Checking...")
 
-    def enable_menu(self):
+    def enable_check_now(self):
         """Enables check now button."""
         self.menu.get_children()[0].set_sensitive(True)
         self.menu.get_children()[0].set_label("Check now")
+
+    def disable_channel_chooser(self):
+        """Disables channel chooser button."""
+        self.menu.get_children()[-3].set_sensitive(False)
+
+    def enable_channel_chooser(self):
+        """Enables channel chooser button."""
+        self.menu.get_children()[-3].set_sensitive(True)
 
     def add_streams_menu(self, streams):
         """Adds streams list to menu."""
         settings = self.app.settings.get()
 
         # Remove live streams menu if already exists
-        if len(self.menu_items) > 4:
+        if len(self.menu_items) > 5:
             self.menu_items.pop(2)
             self.menu_items.pop(1)
 
@@ -154,6 +164,10 @@ class Indicator:
     def on_check_now(self, _):
         """Callback for check now menu item."""
         self.app.start_api_thread()
+
+    def on_channel_chooser(self, _):
+        """Callback for channel chooser menu item."""
+        self.app.show_channel_chooser()
 
     def on_settings(self, _):
         """Callback for settings menu item."""

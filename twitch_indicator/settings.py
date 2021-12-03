@@ -9,6 +9,7 @@ class Settings:
 
     def __init__(self):
         self.settings = Gio.Settings.new(SETTINGS_KEY)
+        self.dialog = None
 
     def get(self):
         """Return settings object."""
@@ -16,11 +17,11 @@ class Settings:
 
     def show(self):
         """Shows applet settings dialog."""
-        dialog = Gtk.Dialog("Settings", None, 0)
-        dialog.add_buttons(
+        self.dialog = Gtk.Dialog("Settings", None, 0)
+        self.dialog.add_buttons(
             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK
         )
-        dialog.set_position(Gtk.WindowPosition.CENTER)
+        self.dialog.set_position(Gtk.WindowPosition.CENTER)
 
         builder = Gtk.Builder()
         builder.add_from_file(get_data_filepath("twitch-indicator-settings.glade"))
@@ -41,9 +42,9 @@ class Settings:
             self.settings.get_int("refresh-interval")
         )
 
-        box = dialog.get_content_area()
+        box = self.dialog.get_content_area()
         box.add(builder.get_object("grid1"))
-        response = dialog.run()
+        response = self.dialog.run()
 
         if response == Gtk.ResponseType.OK:
             self.settings.set_boolean(
@@ -66,4 +67,5 @@ class Settings:
                 builder.get_object("refresh_interval").get_value_as_int(),
             )
 
-        dialog.destroy()
+        self.dialog.destroy()
+        self.dialog = None

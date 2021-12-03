@@ -52,7 +52,7 @@ class TwitchApi:
             data += nxt["data"]
             last = nxt
 
-        return [int(data["to_id"]) for data in data]
+        return [{"id": int(data["to_id"]), "name": data["to_name"]} for data in data]
 
     def fetch_live_streams(self, channel_ids):
         """Fetches live streams data from Twitch, and returns as list of
@@ -76,13 +76,15 @@ class TwitchApi:
 
         streams = []
         for stream in channels_live:
-            channel_info = self.get_channel_info(int(stream["user_id"]))
+            user_id = int(stream["user_id"])
+            channel_info = self.get_channel_info(user_id)
             try:
                 game_info = self.get_game_info(int(stream["game_id"]))
             except ValueError:
                 game_info = {"name": ""}
 
             stream = {
+                "id": user_id,
                 "name": channel_info["display_name"],
                 "game": game_info["name"],
                 "title": stream["title"],

@@ -4,6 +4,7 @@ from urllib.request import HTTPError
 from gi.repository import GLib, Gtk
 
 from twitch_indicator.auth import Auth
+from twitch_indicator.channel_chooser import ChannelChooser
 from twitch_indicator.errors import NotAuthorizedException
 from twitch_indicator.indicator import Indicator
 from twitch_indicator.notifications import Notifications
@@ -15,6 +16,7 @@ class TwitchIndicatorApp:
     """The main app."""
 
     def __init__(self):
+        self.followed_channels = []
         self.live_streams = []
         self.user_id = None
 
@@ -29,6 +31,7 @@ class TwitchIndicatorApp:
         self.api = TwitchApi(self.auth)
         self.indicator = Indicator(self)
         self.notifications = Notifications(self.settings.get())
+        self.channel_chooser = ChannelChooser(self)
 
         self.start_api_thread()
 
@@ -41,6 +44,10 @@ class TwitchIndicatorApp:
         """Close the indicator."""
         if self.timer_thread:
             self.timer_thread.cancel()
+        if self.settings.dialog:
+            self.settings.dialog.destroy()
+        if self.channel_chooser.dialog:
+            self.channel_chooser.dialog.destroy()
         Gtk.main_quit()
 
     def clear_cache(self):
@@ -66,6 +73,10 @@ class TwitchIndicatorApp:
         )
         self.timer_thread.start()
 
+    def show_channel_chooser(self):
+        """Show channel chooser dialog."""
+        self.channel_chooser.show()
+
     def show_settings(self):
         """Show settings dialog."""
         self.settings.show()
@@ -77,7 +88,8 @@ class TwitchIndicatorApp:
         if self.timer_thread:
             self.timer_thread.cancel()
 
-        GLib.idle_add(self.indicator.disable_menu)
+        GLib.idle_add(self.indicator.disable_check_now)
+        GLib.idle_add(self.indicator.disable_channel_chooser)
 
         # Get Twitch user ID
         if self.user_id is None:
@@ -89,7 +101,7 @@ class TwitchIndicatorApp:
 
         # Fetch followed channels
         try:
-            followed_channels = self.api.fetch_followed_channels(self.user_id)
+            self.followed_channels = self.api.fetch_followed_channels(self.user_id)
         except NotAuthorizedException:
             GLib.idle_add(self.not_authorized)
             return
@@ -104,11 +116,14 @@ class TwitchIndicatorApp:
             return
 
         # Are there channels that the user follows?
-        if followed_channels:
+        if self.followed_channels:
+            GLib.idle_add(self.indicator.enable_channel_chooser)
 
             # Fetch live streams
             try:
-                new_live_streams = self.api.fetch_live_streams(followed_channels)
+                new_live_streams = self.api.fetch_live_streams(
+                    [ch["id"] for ch in self.followed_channels]
+                )
             except NotAuthorizedException:
                 GLib.idle_add(self.not_authorized)
                 return
@@ -146,6 +161,14 @@ class TwitchIndicatorApp:
 
                 self.live_streams = new_live_streams
 
+                # Only show notifications for enabled streams
+                notify_list = [
+                    stream
+                    for stream in notify_list
+                    if stream["id"] not in self.channel_chooser.enabled_channel_ids
+                    or self.channel_chooser.enabled_channel_ids[stream["id"]]
+                ]
+
                 # Push notifications of new streams
                 if settings.get_boolean("enable-notifications"):
                     GLib.idle_add(self.notifications.show_streams, notify_list)
@@ -154,7 +177,7 @@ class TwitchIndicatorApp:
         GLib.idle_add(self.start_timer)
 
         # Re-enable "Check now" button
-        GLib.idle_add(self.indicator.enable_menu)
+        GLib.idle_add(self.indicator.enable_check_now)
 
     def not_authorized(self):
         """Clear cache and request authorization."""
