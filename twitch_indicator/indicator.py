@@ -34,9 +34,6 @@ class Indicator:
         self.menu_item_channels = Gtk.MenuItem(label="Live channels")
         self.menu_item_channels.set_sensitive(False)
 
-        self.menu_item_choose_channels = Gtk.MenuItem(label="Choose channels")
-        self.menu_item_choose_channels.connect("activate", self.on_channel_chooser)
-
         self.menu_item_settings = Gtk.MenuItem(label="Settings")
         self.menu_item_settings.connect("activate", self.on_settings)
 
@@ -55,14 +52,6 @@ class Indicator:
         """Enables check now button."""
         self.menu_item_check_now.set_sensitive(True)
         self.menu_item_check_now.set_label("Check now")
-
-    def disable_channel_chooser(self):
-        """Disables channel chooser button."""
-        self.menu_item_choose_channels.set_sensitive(False)
-
-    def enable_channel_chooser(self):
-        """Enables channel chooser button."""
-        self.menu_item_choose_channels.set_sensitive(True)
 
     def add_streams_menu(self, streams):
         """Adds streams list to menu."""
@@ -144,7 +133,6 @@ class Indicator:
         self.menu.append(self.menu_item_check_now)
         self.menu.append(self.menu_item_channels)
         self.menu.append(Gtk.SeparatorMenuItem())
-        self.menu.append(self.menu_item_choose_channels)
         self.menu.append(self.menu_item_settings)
         self.menu.append(self.menu_item_quit)
         self.menu.show_all()
@@ -158,10 +146,6 @@ class Indicator:
     def on_check_now(self, _):
         """Callback for check now menu item."""
         self.app.start_api_thread()
-
-    def on_channel_chooser(self, _):
-        """Callback for channel chooser menu item."""
-        self.app.show_channel_chooser()
 
     def on_settings(self, _):
         """Callback for settings menu item."""

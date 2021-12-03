@@ -24,9 +24,7 @@ class TwitchIndicatorApp:
         self.api_thread = None
         self.timer_thread = None
 
-        # Load settings
-        self.settings = Settings()
-
+        self.settings = Settings(self)
         self.auth = Auth(self)
         self.api = TwitchApi(self.auth)
         self.indicator = Indicator(self)
@@ -89,7 +87,6 @@ class TwitchIndicatorApp:
             self.timer_thread.cancel()
 
         GLib.idle_add(self.indicator.disable_check_now)
-        GLib.idle_add(self.indicator.disable_channel_chooser)
 
         # Get Twitch user ID
         if self.user_id is None:
@@ -114,7 +111,7 @@ class TwitchIndicatorApp:
 
         # Are there channels that the user follows?
         if self.followed_channels:
-            GLib.idle_add(self.indicator.enable_channel_chooser)
+            GLib.idle_add(self.settings.enable_channel_chooser)
 
             # Fetch live streams
             try:

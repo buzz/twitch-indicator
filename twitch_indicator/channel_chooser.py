@@ -18,6 +18,9 @@ class ChannelChooser:
 
     def show(self):
         """Shows channel chooser dialog."""
+        if self.dialog:
+            self.dialog.present()
+            return
 
         self.dialog = Gtk.Dialog("Channel chooser", None, 0)
         self.dialog.set_default_size(150, 500)
@@ -46,7 +49,10 @@ class ChannelChooser:
         if response == Gtk.ResponseType.OK:
             self.store_enabled()
 
-        self.dialog.destroy()
+        try:
+            self.dialog.destroy()
+        except AttributeError:
+            pass
         self.dialog = None
         self.entry_search = None
         self.list_box = None
