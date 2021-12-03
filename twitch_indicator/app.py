@@ -1,5 +1,5 @@
 import threading
-from urllib.request import HTTPError
+from urllib.error import URLError
 
 from gi.repository import GLib, Gtk
 
@@ -98,6 +98,15 @@ class TwitchIndicatorApp:
             except NotAuthorizedException:
                 GLib.idle_add(self.not_authorized)
                 return
+            except URLError as err:
+                interval = settings.get_int("refresh-interval")
+                GLib.idle_add(
+                    self.indicator.abort_refresh,
+                    err,
+                    "Cannot retrieve user ID from Twitch",
+                    f"Retrying in {interval} minutes...",
+                )
+                return
 
         # Fetch followed channels
         try:
@@ -105,7 +114,7 @@ class TwitchIndicatorApp:
         except NotAuthorizedException:
             GLib.idle_add(self.not_authorized)
             return
-        except HTTPError as err:
+        except URLError as err:
             interval = settings.get_int("refresh-interval")
             GLib.idle_add(
                 self.indicator.abort_refresh,
@@ -127,7 +136,7 @@ class TwitchIndicatorApp:
             except NotAuthorizedException:
                 GLib.idle_add(self.not_authorized)
                 return
-            except HTTPError as err:
+            except URLError as err:
                 interval = settings.get_int("refresh-interval")
                 GLib.idle_add(
                     self.indicator.abort_refresh,
