@@ -99,13 +99,7 @@ class TwitchIndicatorApp:
                 GLib.idle_add(self.not_authorized)
                 return
             except URLError as err:
-                interval = settings.get_int("refresh-interval")
-                GLib.idle_add(
-                    self.indicator.abort_refresh,
-                    err,
-                    "Cannot retrieve user ID from Twitch",
-                    f"Retrying in {interval} minutes...",
-                )
+                self.refresh_failed("Cannot retrieve user ID from Twitch", err)
                 return
 
         # Fetch followed channels
@@ -115,13 +109,7 @@ class TwitchIndicatorApp:
             GLib.idle_add(self.not_authorized)
             return
         except URLError as err:
-            interval = settings.get_int("refresh-interval")
-            GLib.idle_add(
-                self.indicator.abort_refresh,
-                err,
-                "Cannot retrieve channel list from Twitch",
-                f"Retrying in {interval} minutes...",
-            )
+            self.refresh_failed("Cannot retrieve channel list from Twitch", err)
             return
 
         # Are there channels that the user follows?
@@ -137,13 +125,7 @@ class TwitchIndicatorApp:
                 GLib.idle_add(self.not_authorized)
                 return
             except URLError as err:
-                interval = settings.get_int("refresh-interval")
-                GLib.idle_add(
-                    self.indicator.abort_refresh,
-                    err,
-                    "Cannot retrieve live streams from Twitch",
-                    f"Retrying in {interval} minutes...",
-                )
+                self.refresh_failed("Cannot retrieve live streams from Twitch", err)
                 return
 
             # Are there *live* streams?
@@ -182,11 +164,24 @@ class TwitchIndicatorApp:
                 if settings.get_boolean("enable-notifications"):
                     GLib.idle_add(self.notifications.show_streams, notify_list)
 
+        self.indicator.first_fetch = False
+
         # Schedule next periodic fetch
         GLib.idle_add(self.start_timer)
 
         # Re-enable "Check now" button
         GLib.idle_add(self.indicator.enable_check_now)
+
+    def refresh_failed(self, msg, err):
+        """Handle network error while fetching data."""
+        interval = self.settings.get().get_int("refresh-interval")
+        GLib.idle_add(
+            self.indicator.abort_refresh,
+            err,
+            msg,
+            f"Retrying in {interval} minutes...",
+        )
+        GLib.idle_add(self.start_timer)
 
     def not_authorized(self):
         """Clear cache and request authorization."""

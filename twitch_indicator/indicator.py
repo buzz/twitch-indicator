@@ -12,6 +12,7 @@ class Indicator:
     """App indicator."""
 
     def __init__(self, app):
+        self.first_fetch = True
         self.app = app
         self.app_indicator = AppIndicator3.Indicator.new(
             "Twitch indicator",
@@ -151,9 +152,14 @@ class Indicator:
 
         self.menu.show_all()
 
-        if isinstance(exception, HTTPError):
-            description = f"{description} (Error code: {exception.code})"
-        self.app.notifications.show(message, description, category="network.error")
+        # Skip error notification on first fetch (internet might not be up)
+        if not self.first_fetch:
+            if isinstance(exception, HTTPError):
+                description = f"{description} (Error code: {exception.code})"
+
+            self.app.notifications.show(message, description, category="network.error")
+
+        self.first_fetch = False
 
     # UI callbacks
 

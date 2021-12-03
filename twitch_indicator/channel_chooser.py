@@ -83,7 +83,7 @@ class ChannelChooser:
 
     def restore_enabled(self):
         """Get and parse enabled channel IDs from settings."""
-        enabled_str = self.app.settings.settings.get_string("enabled-channel-ids")
+        enabled_str = self.app.settings.get().get_string("enabled-channel-ids")
         try:
             for channel in enabled_str.split(","):
                 channel_id, onoff = channel.split(":")
@@ -104,7 +104,7 @@ class ChannelChooser:
             enabled_list.append(f"{channel_id}:{onoff}")
 
         enabled_str = ",".join(enabled_list)
-        self.app.settings.settings.set_string("enabled-channel-ids", enabled_str)
+        self.app.settings.get().set_string("enabled-channel-ids", enabled_str)
 
     def on_toggled(self, checkbox, channel_id):
         """Toggle a channel."""
