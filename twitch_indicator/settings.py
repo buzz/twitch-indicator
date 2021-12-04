@@ -46,9 +46,11 @@ class Settings:
         builder.get_object("open_command").set_text(
             self.settings.get_string("open-command")
         )
-        builder.get_object("refresh_interval").set_value(
-            self.settings.get_int("refresh-interval")
-        )
+        spin_btn_refresh_interval = builder.get_object("refresh_interval")
+        spin_btn_refresh_interval.set_range(1, 999)
+        spin_btn_refresh_interval.set_increments(1, 1)
+        spin_btn_refresh_interval.set_value(self.settings.get_int("refresh-interval"))
+
         self.btn_channel_chooser = builder.get_object("btn_channel_chooser")
         self.btn_channel_chooser.connect("clicked", self.on_btn_channel_chooser_clicked)
         if self.app.followed_channels:
