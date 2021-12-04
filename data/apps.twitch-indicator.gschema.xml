@@ -25,6 +25,12 @@
       <description>Shows viewer count in notifications and menu.</description>
     </key>
 
+    <key type="b" name="show-selected-channels-on-top">
+      <default>true</default>
+      <summary>Sort selected channels to top</summary>
+      <description>Shows selected channels on top in the live channels list.</description>
+    </key>
+
     <key type="s" name="open-command">
       <default>"{browser} {url}"</default>
       <summary>Open Command</summary>

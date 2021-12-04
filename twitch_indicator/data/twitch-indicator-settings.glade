@@ -227,7 +227,7 @@ Available placeholders:
       <object class="GtkLabel" id="label4">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
-        <property name="tooltip-text" translatable="yes">Sort selected notification channels to to of live channels list.</property>
+        <property name="tooltip-text" translatable="yes">Sort selected notification channels to the top of live channels list.</property>
         <property name="halign">start</property>
         <property name="label" translatable="yes">Channels to top</property>
       </object>
@@ -237,10 +237,10 @@ Available placeholders:
       </packing>
     </child>
     <child>
-      <object class="GtkSwitch" id="channel_to_top">
+      <object class="GtkSwitch" id="show_selected_channels_on_top">
         <property name="visible">True</property>
         <property name="can-focus">True</property>
-        <property name="tooltip-text" translatable="yes">Sort selected notification channels to to of live channels list.</property>
+        <property name="tooltip-text" translatable="yes">Sort selected notification channels to the top of live channels list.</property>
         <property name="halign">start</property>
       </object>
       <packing>

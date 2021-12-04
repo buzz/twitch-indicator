@@ -43,6 +43,9 @@ class Settings:
         builder.get_object("show_viewer_count").set_active(
             self.settings.get_boolean("show-viewer-count")
         )
+        builder.get_object("show_selected_channels_on_top").set_active(
+            self.settings.get_boolean("show-selected-channels-on-top")
+        )
         builder.get_object("open_command").set_text(
             self.settings.get_string("open-command")
         )
@@ -72,6 +75,10 @@ class Settings:
             self.settings.set_boolean(
                 "show-viewer-count",
                 builder.get_object("show_viewer_count").get_active(),
+            )
+            self.settings.set_boolean(
+                "show-selected-channels-on-top",
+                builder.get_object("show_selected_channels_on_top").get_active(),
             )
             self.settings.set_string(
                 "open-command",

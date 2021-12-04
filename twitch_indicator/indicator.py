@@ -67,43 +67,63 @@ class Indicator:
             self.menu_item_channels.set_label(f"Live channels ({len(streams)})")
             self.menu_item_channels.set_sensitive(True)
 
-            for index, stream in enumerate(streams_ordered):
-                menu_entry = Gtk.ImageMenuItem()
+            # Selected channels to top
+            if settings.get_boolean("show-selected-channels-on-top"):
+                enabled_channels = []
+                other_channels = []
+                enabled_channel_ids = self.app.channel_chooser.enabled_channel_ids
 
-                # Channel icon
-                pixbuf = (
-                    stream["pixbuf"]
-                    .get_pixbuf()
-                    .scale_simple(32, 32, GdkPixbuf.InterpType.BILINEAR)
-                )
-                icon = Gtk.Image.new_from_pixbuf(pixbuf)
-                menu_entry.set_image(icon)
+                for stream in streams_ordered:
+                    if enabled_channel_ids[stream["id"]]:
+                        enabled_channels.append(stream)
+                    else:
+                        other_channels.append(stream)
 
-                # Channel label
-                label = Gtk.Label()
-                markup = f"<b>{GLib.markup_escape_text(stream['name'])}</b>"
-                if settings.get_boolean("show-game-playing") and stream["game"]:
-                    markup += f" • {GLib.markup_escape_text(stream['game'])}"
-                if settings.get_boolean("show-viewer-count"):
-                    viewer_count = format_viewer_count(stream["viewer_count"])
-                    markup += f" (<small>{viewer_count}</small>)"
+                self.create_channel_menu_items(enabled_channels, streams_menu, settings)
+                streams_menu.append(Gtk.SeparatorMenuItem())
+                self.create_channel_menu_items(other_channels, streams_menu, settings)
 
-                label.set_markup(markup)
-                label.set_halign(Gtk.Align.START)
-                menu_entry.add(label)
+            else:
+                self.create_channel_menu_items(streams_ordered, streams_menu, settings)
 
-                streams_menu.append(menu_entry)
-                streams_menu.get_children()[index].connect(
-                    "activate", self.on_stream_menu, stream["url"]
-                )
         else:
+            # No live channels
             self.menu_item_channels.set_label("No live channels...")
             self.menu_item_channels.set_sensitive(False)
 
-        for i in streams_menu.get_children():
-            i.show()
-
         self.refresh_menu_items()
+
+    def create_channel_menu_items(self, streams, streams_menu, settings):
+        """Create menu items from streams array."""
+        for idx, stream in enumerate(streams):
+            menu_entry = Gtk.ImageMenuItem()
+
+            # Channel icon
+            pixbuf = (
+                stream["pixbuf"]
+                .get_pixbuf()
+                .scale_simple(32, 32, GdkPixbuf.InterpType.BILINEAR)
+            )
+            icon = Gtk.Image.new_from_pixbuf(pixbuf)
+            menu_entry.set_image(icon)
+
+            # Channel label
+            label = Gtk.Label()
+            markup = f"<b>{GLib.markup_escape_text(stream['name'])}</b>"
+            if settings.get_boolean("show-game-playing") and stream["game"]:
+                markup += f" • {GLib.markup_escape_text(stream['game'])}"
+            if settings.get_boolean("show-viewer-count"):
+                viewer_count = format_viewer_count(stream["viewer_count"])
+                markup += f" (<small>{viewer_count}</small>)"
+
+            label.set_markup(markup)
+            label.set_halign(Gtk.Align.START)
+            menu_entry.add(label)
+
+            streams_menu.append(menu_entry)
+            streams_menu.get_children()[idx].connect(
+                "activate", self.on_stream_menu, stream["url"]
+            )
 
     def abort_refresh(self, exception, message, description):
         """Updates menu with failure state message."""
