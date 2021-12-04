@@ -109,16 +109,13 @@ class TwitchApi:
             channel_info = resp["data"][0]
 
             # Fetch channel image
-            channel_image = urlopen(
-                channel_info["profile_image_url"]
-                if channel_info["profile_image_url"]
-                else DEFAULT_AVATAR
-            )
-            pixbuf = GdkPixbuf.PixbufLoader.new()
-            pixbuf.set_size(128, 128)
-            pixbuf.write(channel_image.read())
-            pixbuf.close()
-            channel_info["pixbuf"] = pixbuf
+            url = channel_info["profile_image_url"] or DEFAULT_AVATAR
+            with urlopen(url) as response:
+                pixbuf = GdkPixbuf.PixbufLoader.new()
+                pixbuf.set_size(128, 128)
+                pixbuf.write(response.read())
+                pixbuf.close()
+                channel_info["pixbuf"] = pixbuf
 
             self.channel_info_cache[channel_id] = channel_info
             return channel_info
@@ -162,9 +159,8 @@ class TwitchApi:
         }
         req = Request(url, headers=headers)
         try:
-            resp = urlopen(req).read()
-            decoded = json.loads(resp)
-            return decoded
+            with urlopen(req) as response:
+                return json.loads(response.read())
         except HTTPError as err:
             if err.code == 401:
                 raise NotAuthorizedException from err

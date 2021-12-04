@@ -53,6 +53,7 @@ class ChannelChooser:
             self.dialog.destroy()
         except AttributeError:
             pass
+
         self.dialog = None
         self.entry_search = None
         self.list_box = None

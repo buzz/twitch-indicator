@@ -28,7 +28,8 @@ class Auth:
         self.ensure_config_dir()
         self.restore_token()
 
-    def ensure_config_dir(self):
+    @staticmethod
+    def ensure_config_dir():
         """Create config dir if it doesn't exists."""
         if not os.path.isdir(CONFIG_DIR):
             os.mkdir(CONFIG_DIR)
@@ -36,7 +37,7 @@ class Auth:
     def restore_token(self):
         """Restore auth token from config dir."""
         if os.path.isfile(AUTH_TOKEN_PATH):
-            with open(AUTH_TOKEN_PATH, "r") as token_file:
+            with open(AUTH_TOKEN_PATH, "r", encoding="UTF-8") as token_file:
                 self.token = token_file.read()
 
     def acquire_token(self):
@@ -81,7 +82,7 @@ class Auth:
         [self.token] = hash_params["access_token"]
 
         # Save token to disk
-        with open(AUTH_TOKEN_PATH, "w") as token_file:
+        with open(AUTH_TOKEN_PATH, "w", encoding="UTF-8") as token_file:
             token_file.write(self.token)
         os.chmod(AUTH_TOKEN_PATH, 0o600)
 
