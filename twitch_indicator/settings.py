@@ -11,6 +11,7 @@ class Settings:
         self.app = app
         self.settings = Gio.Settings.new(SETTINGS_KEY)
         self.dialog = None
+        self.entry_open_command = None
         self.btn_channel_chooser = None
 
     def get(self):
@@ -46,9 +47,12 @@ class Settings:
         builder.get_object("show_selected_channels_on_top").set_active(
             self.settings.get_boolean("show-selected-channels-on-top")
         )
-        builder.get_object("open_command").set_text(
-            self.settings.get_string("open-command")
+        self.entry_open_command = builder.get_object("open_command")
+        self.entry_open_command.set_text(self.settings.get_string("open-command"))
+        builder.get_object("btn_revert_open_command").connect(
+            "clicked", self.on_btn_revert_open_commed_clicked
         )
+
         spin_btn_refresh_interval = builder.get_object("refresh_interval")
         spin_btn_refresh_interval.set_range(1, 999)
         spin_btn_refresh_interval.set_increments(1, 1)
@@ -106,3 +110,8 @@ class Settings:
     def on_btn_channel_chooser_clicked(self, _):
         """Callback for channel chooser menu item."""
         self.app.show_channel_chooser()
+
+    def on_btn_revert_open_commed_clicked(self, _):
+        """Revert open command to default."""
+        val = self.settings.get_default_value("open-command")
+        self.entry_open_command.set_text(val.get_string())

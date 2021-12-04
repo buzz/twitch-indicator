@@ -271,7 +271,7 @@ Available placeholders:
           </packing>
         </child>
         <child>
-          <object class="GtkButton" id="btn-revert-open-command">
+          <object class="GtkButton" id="btn_revert_open_command">
             <property name="label">gtk-revert-to-saved</property>
             <property name="name">Revert</property>
             <property name="visible">True</property>
