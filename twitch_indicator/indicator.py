@@ -95,7 +95,7 @@ class Indicator:
 
     def create_channel_menu_items(self, streams, streams_menu, settings):
         """Create menu items from streams array."""
-        for idx, stream in enumerate(streams):
+        for stream in streams:
             menu_entry = Gtk.ImageMenuItem()
 
             # Channel icon
@@ -119,11 +119,9 @@ class Indicator:
             label.set_markup(markup)
             label.set_halign(Gtk.Align.START)
             menu_entry.add(label)
+            menu_entry.connect("activate", self.on_stream_menu, stream["url"])
 
             streams_menu.append(menu_entry)
-            streams_menu.get_children()[idx].connect(
-                "activate", self.on_stream_menu, stream["url"]
-            )
 
     def abort_refresh(self, exception, message, description):
         """Updates menu with failure state message."""
