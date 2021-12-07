@@ -1,8 +1,8 @@
 import webbrowser
 import os
+from gi.repository import Notify, GLib
 
-from gi.repository import Notify
-
+from twitch_indicator.cached_profile_image import CachedProfileImage
 from twitch_indicator.util import format_viewer_count
 
 
@@ -49,6 +49,11 @@ class Notifications:
                         viewer_count = format_viewer_count(stream["viewer_count"])
                         descr += f"\nViewers: <b>{viewer_count}</b>"
 
+                try:
+                    pixbuf = CachedProfileImage.new_from_cached(stream["id"])
+                except GLib.Error:
+                    pixbuf = None
+
                 action = (
                     "watch",
                     "Watch",
@@ -60,7 +65,7 @@ class Notifications:
                     descr,
                     action=action,
                     category="presence.online",
-                    image=stream["pixbuf"].get_pixbuf(),
+                    image=pixbuf,
                 )
         else:
             self.first_notification_run = False

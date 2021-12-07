@@ -3,7 +3,7 @@ import os
 from urllib.request import HTTPError
 
 from gi.repository import AppIndicator3
-from gi.repository import GdkPixbuf, Gtk, GLib
+from gi.repository import Gtk, GLib
 
 from twitch_indicator.util import format_viewer_count, get_data_filepath
 
@@ -99,11 +99,7 @@ class Indicator:
             menu_entry = Gtk.ImageMenuItem()
 
             # Channel icon
-            pixbuf = (
-                stream["pixbuf"]
-                .get_pixbuf()
-                .scale_simple(32, 32, GdkPixbuf.InterpType.BILINEAR)
-            )
+            pixbuf = stream["pixbuf"]
             icon = Gtk.Image.new_from_pixbuf(pixbuf)
             menu_entry.set_image(icon)
 

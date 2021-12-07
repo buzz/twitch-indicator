@@ -19,5 +19,9 @@ UNICODE_ASCII_CHARACTER_SET = (
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 CONFIG_DIR = os.path.join(GLib.get_user_config_dir(), "twitch-indicator")
+CACHE_DIR = os.path.join(
+    os.getenv("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "twitch-indicator"
+)
+PROFILE_IMAGE_SIZE = 120, 120
 AUTH_TOKEN_PATH = os.path.join(CONFIG_DIR, "authtoken")
 AUTH_SOCKET_PATH = os.path.join(os.sep, "tmp", "twitch-indicator-auth-socket")

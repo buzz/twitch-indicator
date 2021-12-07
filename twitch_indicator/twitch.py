@@ -2,8 +2,7 @@ import json
 from urllib.parse import urlencode, urlparse, urlunparse
 from urllib.request import urlopen, Request, HTTPError
 
-from gi.repository import GdkPixbuf
-
+from twitch_indicator.cached_profile_image import CachedProfileImage
 from twitch_indicator.constants import (
     DEFAULT_AVATAR,
     TWITCH_API_LIMIT,
@@ -108,14 +107,15 @@ class TwitchApi:
                 return ValueError("Bad API response.")
             channel_info = resp["data"][0]
 
-            # Fetch channel image
-            url = channel_info["profile_image_url"] or DEFAULT_AVATAR
-            with urlopen(url) as response:
-                pixbuf = GdkPixbuf.PixbufLoader.new()
-                pixbuf.set_size(128, 128)
-                pixbuf.write(response.read())
-                pixbuf.close()
-                channel_info["pixbuf"] = pixbuf
+            # Channel image
+            if channel_info["profile_image_url"]:
+                channel_info["pixbuf"] = CachedProfileImage.new_from_profile_url(
+                    channel_id, channel_info["profile_image_url"]
+                )
+            else:
+                channel_info["pixbuf"] = CachedProfileImage.new_from_profile_url(
+                    "default", DEFAULT_AVATAR
+                )
 
             self.channel_info_cache[channel_id] = channel_info
             return channel_info
