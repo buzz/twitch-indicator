@@ -74,9 +74,12 @@ class Indicator:
                 enabled_channel_ids = self.app.channel_chooser.enabled_channel_ids
 
                 for stream in streams_ordered:
-                    if enabled_channel_ids[stream["id"]]:
-                        enabled_channels.append(stream)
-                    else:
+                    try:
+                        if enabled_channel_ids[stream["id"]]:
+                            enabled_channels.append(stream)
+                        else:
+                            other_channels.append(stream)
+                    except KeyError:
                         other_channels.append(stream)
 
                 self.create_channel_menu_items(enabled_channels, streams_menu, settings)
