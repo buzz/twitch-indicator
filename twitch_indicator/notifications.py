@@ -1,5 +1,6 @@
 import webbrowser
 import os
+import subprocess
 from gi.repository import Notify, GLib
 
 from twitch_indicator.cached_profile_image import CachedProfileImage
@@ -78,4 +79,5 @@ class Notifications:
         """Callback for notification stream watch action."""
         browser = webbrowser.get().basename
         cmd = self.settings.get_string("open-command")
-        os.system(cmd.format(url=url, browser=browser))
+        formated = cmd.format(url=url, browser=browser).split()
+        subprocess.Popen(formated)
