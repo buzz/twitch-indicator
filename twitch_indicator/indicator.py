@@ -1,5 +1,6 @@
 import webbrowser
 import os
+import subprocess
 from urllib.request import HTTPError
 
 from gi.repository import AppIndicator3
@@ -167,4 +168,5 @@ class Indicator:
         """Callback for stream menu item."""
         browser = webbrowser.get().basename
         cmd = self.app.settings.get().get_string("open-command")
-        os.system(cmd.format(url=url, browser=browser))
+        formated = cmd.format(url=url, browser=browser).split()
+        subprocess.Popen(formated)
