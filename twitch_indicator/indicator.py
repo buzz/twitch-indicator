@@ -1,5 +1,4 @@
 import webbrowser
-import os
 import subprocess
 from urllib.request import HTTPError
 
@@ -28,21 +27,24 @@ class Indicator:
     def setup_menu(self):
         """Setup menu."""
         self.menu = Gtk.Menu()
+        self.app_indicator.set_menu(self.menu)
 
         self.menu_item_check_now = Gtk.MenuItem(label="Check now")
         self.menu_item_check_now.connect("activate", self.on_check_now)
 
-        self.menu_item_channels = Gtk.MenuItem(label="Live channels")
-        self.menu_item_channels.set_sensitive(False)
+        menu_item_settings = Gtk.MenuItem(label="Settings")
+        menu_item_settings.connect("activate", self.on_settings)
 
-        self.menu_item_settings = Gtk.MenuItem(label="Settings")
-        self.menu_item_settings.connect("activate", self.on_settings)
+        menu_item_quit = Gtk.MenuItem(label="Quit")
+        menu_item_quit.connect("activate", self.on_quit)
 
-        self.menu_item_quit = Gtk.MenuItem(label="Quit")
-        self.menu_item_quit.connect("activate", self.on_quit)
+        self.stream_menu_items = []
 
-        self.app_indicator.set_menu(self.menu)
-        self.refresh_menu_items()
+        self.menu.append(Gtk.SeparatorMenuItem())
+        self.menu.append(self.menu_item_check_now)
+        self.menu.append(menu_item_settings)
+        self.menu.append(menu_item_quit)
+        self.menu.show_all()
 
     def disable_check_now(self):
         """Disables check now button."""
@@ -58,16 +60,13 @@ class Indicator:
         """Adds streams list to menu."""
         settings = self.app.settings.get()
 
-        streams_menu = Gtk.Menu()
-        self.menu_item_channels.set_submenu(streams_menu)
-
         # Order streams by viewer count
         streams_ordered = sorted(streams, key=lambda k: -k["viewer_count"])
 
-        if streams_ordered:
-            self.menu_item_channels.set_label(f"Live channels ({len(streams)})")
-            self.menu_item_channels.set_sensitive(True)
+        for streamitem in self.stream_menu_items:
+            self.menu.remove(streamitem)
 
+        if streams_ordered:
             # Selected channels to top
             if settings.get_boolean("show-selected-channels-on-top"):
                 enabled_channels = []
@@ -83,19 +82,20 @@ class Indicator:
                     except KeyError:
                         other_channels.append(stream)
 
-                self.create_channel_menu_items(enabled_channels, streams_menu, settings)
-                streams_menu.append(Gtk.SeparatorMenuItem())
-                self.create_channel_menu_items(other_channels, streams_menu, settings)
+                self.create_channel_menu_items(enabled_channels, self.menu, settings)
+                sep = Gtk.SeparatorMenuItem()
+                self.menu.prepend(sep)
+                self.stream_menu_items.append(sep)
+                self.create_channel_menu_items(other_channels, self.menu, settings)
 
             else:
-                self.create_channel_menu_items(streams_ordered, streams_menu, settings)
+                self.create_channel_menu_items(streams_ordered, self.menu, settings)
 
         else:
-            # No live channels
-            self.menu_item_channels.set_label("No live channels...")
-            self.menu_item_channels.set_sensitive(False)
+            menu_item_nolive = Gtk.MenuItem(label="No live channels...")
+            self.stream_menu_items.append(menu_item_nolive)
 
-        self.refresh_menu_items()
+        self.menu.show_all()
 
     def create_channel_menu_items(self, streams, streams_menu, settings):
         """Create menu items from streams array."""
@@ -121,14 +121,14 @@ class Indicator:
             menu_entry.add(label)
             menu_entry.connect("activate", self.on_stream_menu, stream["url"])
 
-            streams_menu.append(menu_entry)
+            self.stream_menu_items.append(menu_entry)
+            streams_menu.prepend(menu_entry)
 
     def abort_refresh(self, exception, message, description):
         """Updates menu with failure state message."""
         self.menu_item_channels.set_label(message)
         self.menu_item_channels.set_sensitive(False)
         self.enable_check_now()
-        self.refresh_menu_items()
 
         # Skip error notification on first fetch (internet might not be up)
         if not self.first_fetch:
@@ -138,17 +138,6 @@ class Indicator:
             self.app.notifications.show(message, description, category="network.error")
 
         self.first_fetch = False
-
-    def refresh_menu_items(self):
-        """Refresh all menu by removing and re-adding menu items."""
-        for menu_item in self.menu.get_children():
-            self.menu.remove(menu_item)
-        self.menu.append(self.menu_item_check_now)
-        self.menu.append(self.menu_item_channels)
-        self.menu.append(Gtk.SeparatorMenuItem())
-        self.menu.append(self.menu_item_settings)
-        self.menu.append(self.menu_item_quit)
-        self.menu.show_all()
 
     # UI callbacks
 
