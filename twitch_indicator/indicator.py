@@ -15,10 +15,11 @@ class Indicator:
         self.first_fetch = True
         self.app = app
         self.app_indicator = AppIndicator3.Indicator.new(
-            "Twitch indicator",
+            "twitch-indicator",
             get_data_filepath("twitch-indicator.svg"),
             AppIndicator3.IndicatorCategory.APPLICATION_STATUS,
         )
+        self.app_indicator.set_title("Twitch Indicator")
         self.app_indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
         # Setup menu
@@ -93,6 +94,7 @@ class Indicator:
 
         else:
             menu_item_nolive = Gtk.MenuItem(label="No live channels...")
+            menu_item_nolive.set_sensitive(False)
             self.stream_menu_items.append(menu_item_nolive)
 
         self.menu.show_all()
