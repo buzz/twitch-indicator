@@ -101,7 +101,7 @@ class Indicator:
 
     def create_channel_menu_items(self, streams, streams_menu, settings):
         """Create menu items from streams array."""
-        for stream in streams:
+        for stream in reversed(streams):
             menu_entry = Gtk.ImageMenuItem()
 
             # Channel icon
