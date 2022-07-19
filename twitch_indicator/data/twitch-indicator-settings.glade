@@ -173,7 +173,8 @@
 
 Available placeholders:
 &lt;tt&gt;{browser}&lt;/tt&gt; - Default browser command
-&lt;tt&gt;{url}&lt;/tt&gt; - Channel URL</property>
+&lt;tt&gt;{url}&lt;/tt&gt; - Channel URL
+&lt;tt&gt;{name}&lt;/tt&gt; - Channel name</property>
             <property name="hexpand">True</property>
           </object>
           <packing>

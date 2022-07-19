@@ -154,7 +154,7 @@ class Indicator:
             label.set_markup(markup)
             label.set_halign(Gtk.Align.START)
             menu_entry.add(label)
-            menu_entry.connect("activate", self.on_stream_menu, stream["url"])
+            menu_entry.connect("activate", self.on_stream_menu, stream["url"], stream["name"])
 
             self.stream_menu_items.append(menu_entry)
             streams_menu_func(menu_entry)
@@ -193,9 +193,9 @@ class Indicator:
         """Callback for settings menu item."""
         self.app.show_settings()
 
-    def on_stream_menu(self, _, url):
+    def on_stream_menu(self, _, url, name):
         """Callback for stream menu item."""
         browser = webbrowser.get().basename
         cmd = self.app.settings.get().get_string("open-command")
-        formated = cmd.format(url=url, browser=browser).split()
+        formated = cmd.format(url=url, browser=browser, name=name).split()
         subprocess.Popen(formated)
