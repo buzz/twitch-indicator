@@ -85,8 +85,6 @@ class Indicator:
         for streamitem in self.stream_menu_items:
             self.menu.remove(streamitem)
 
-        menu = self.menu if self.first_level_live_channels else streams_menu
-
         if streams_ordered:
             self.menu_item_channels.set_label(f"Live channels ({len(streams)})")
             self.menu_item_channels.set_sensitive(True)
@@ -106,17 +104,22 @@ class Indicator:
                     except KeyError:
                         other_channels.append(stream)
 
-                self.create_channel_menu_items(enabled_channels, menu, settings)
-                sep = Gtk.SeparatorMenuItem()
                 if self.first_level_live_channels:
-                    self.stream_menu_items.append(sep)
-                    menu.prepend(sep)
+                    self.create_channel_menu_items(reversed(other_channels), self.menu.prepend, settings)
+                    separator = Gtk.SeparatorMenuItem()
+                    self.stream_menu_items.append(separator)
+                    self.menu.prepend(separator)
+                    self.create_channel_menu_items(reversed(enabled_channels), self.menu.prepend, settings)
                 else:
-                    menu.append(sep)
-                self.create_channel_menu_items(other_channels, menu, settings)
+                    self.create_channel_menu_items(enabled_channels, streams_menu.append, settings)
+                    streams_menu.append(Gtk.SeparatorMenuItem())
+                    self.create_channel_menu_items(other_channels, streams_menu.append, settings)
 
             else:
-                self.create_channel_menu_items(streams_ordered, menu, settings)
+                if self.first_level_live_channels:
+                    self.create_channel_menu_items(reversed(streams_ordered), self.menu, settings)
+                else:
+                    self.create_channel_menu_items(streams_ordered, streams_menu, settings)
 
         else:
             menu_item_nolive = Gtk.MenuItem(label="No live channels...")
@@ -129,7 +132,7 @@ class Indicator:
         self.menu.prepend(self.menu_item_channels)
         self.menu_show_all()
 
-    def create_channel_menu_items(self, streams, streams_menu, settings):
+    def create_channel_menu_items(self, streams, streams_menu_func, settings):
         """Create menu items from streams array."""
         for stream in streams:
             menu_entry = Gtk.ImageMenuItem()
@@ -153,11 +156,8 @@ class Indicator:
             menu_entry.add(label)
             menu_entry.connect("activate", self.on_stream_menu, stream["url"])
 
-            if self.first_level_live_channels:
-                self.stream_menu_items.append(menu_entry)
-                streams_menu.prepend(menu_entry)
-            else:
-                streams_menu.append(menu_entry)
+            self.stream_menu_items.append(menu_entry)
+            streams_menu_func(menu_entry)
 
     def abort_refresh(self, exception, message, description):
         """Updates menu with failure state message."""
