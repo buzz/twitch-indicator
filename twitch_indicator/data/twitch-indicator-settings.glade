@@ -2,7 +2,7 @@
 <!-- Generated with glade 3.38.2 -->
 <interface>
   <requires lib="gtk+" version="3.12"/>
-  <!-- n-columns=2 n-rows=10 -->
+  <!-- n-columns=2 n-rows=11 -->
   <object class="GtkGrid" id="grid1">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
@@ -55,22 +55,6 @@
       </packing>
     </child>
     <child>
-      <object class="GtkLabel">
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="halign">center</property>
-        <property name="label" translatable="yes">Miscellaneous</property>
-        <attributes>
-          <attribute name="weight" value="bold"/>
-        </attributes>
-      </object>
-      <packing>
-        <property name="left-attach">0</property>
-        <property name="top-attach">7</property>
-        <property name="width">2</property>
-      </packing>
-    </child>
-    <child>
       <object class="GtkSwitch" id="show_viewer_count">
         <property name="visible">True</property>
         <property name="can-focus">True</property>
@@ -80,23 +64,6 @@
       <packing>
         <property name="left-attach">1</property>
         <property name="top-attach">5</property>
-      </packing>
-    </child>
-    <child>
-      <object class="GtkLabel" id="label3">
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="tooltip-markup" translatable="yes">Command to run to open live streams.
-
-Available placeholders:
-&lt;tt&gt;{browser}&lt;/tt&gt; - Default browser command
-&lt;tt&gt;{url}&lt;/tt&gt; - Channel URL</property>
-        <property name="halign">start</property>
-        <property name="label" translatable="yes">Open command</property>
-      </object>
-      <packing>
-        <property name="left-attach">0</property>
-        <property name="top-attach">9</property>
       </packing>
     </child>
     <child>
@@ -153,61 +120,6 @@ Available placeholders:
         <property name="left-attach">0</property>
         <property name="top-attach">2</property>
         <property name="width">2</property>
-      </packing>
-    </child>
-    <child>
-      <object class="GtkLabel" id="label7">
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <property name="tooltip-text" translatable="yes">How often the channel list is updated.</property>
-        <property name="halign">start</property>
-        <property name="label" translatable="yes">Refresh interval</property>
-      </object>
-      <packing>
-        <property name="left-attach">0</property>
-        <property name="top-attach">8</property>
-      </packing>
-    </child>
-    <child>
-      <object class="GtkBox">
-        <property name="visible">True</property>
-        <property name="can-focus">False</property>
-        <child>
-          <object class="GtkSpinButton" id="refresh_interval">
-            <property name="visible">True</property>
-            <property name="can-focus">True</property>
-            <property name="tooltip-text" translatable="yes">How often the channel list is updated.</property>
-            <property name="max-length">4</property>
-            <property name="width-chars">4</property>
-            <property name="input-purpose">digits</property>
-            <property name="input-hints">GTK_INPUT_HINT_NO_SPELLCHECK | GTK_INPUT_HINT_NO_EMOJI | GTK_INPUT_HINT_NONE</property>
-            <property name="snap-to-ticks">True</property>
-            <property name="numeric">True</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkLabel" id="label8">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="halign">start</property>
-            <property name="margin-start">8</property>
-            <property name="label" translatable="yes">min.</property>
-          </object>
-          <packing>
-            <property name="expand">True</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-      </object>
-      <packing>
-        <property name="left-attach">1</property>
-        <property name="top-attach">8</property>
       </packing>
     </child>
     <child>
@@ -290,7 +202,120 @@ Available placeholders:
       </object>
       <packing>
         <property name="left-attach">1</property>
+        <property name="top-attach">10</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label3">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="tooltip-markup" translatable="yes">Command to run to open live streams.
+
+Available placeholders:
+&lt;tt&gt;{browser}&lt;/tt&gt; - Default browser command
+&lt;tt&gt;{url}&lt;/tt&gt; - Channel URL</property>
+        <property name="halign">start</property>
+        <property name="label" translatable="yes">Open command</property>
+      </object>
+      <packing>
+        <property name="left-attach">0</property>
+        <property name="top-attach">10</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkBox">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <child>
+          <object class="GtkSpinButton" id="refresh_interval">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="tooltip-text" translatable="yes">How often the channel list is updated.</property>
+            <property name="max-length">4</property>
+            <property name="width-chars">4</property>
+            <property name="input-purpose">digits</property>
+            <property name="input-hints">GTK_INPUT_HINT_NO_SPELLCHECK | GTK_INPUT_HINT_NO_EMOJI | GTK_INPUT_HINT_NONE</property>
+            <property name="snap-to-ticks">True</property>
+            <property name="numeric">True</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="label8">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">8</property>
+            <property name="label" translatable="yes">min.</property>
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+      <packing>
+        <property name="left-attach">1</property>
         <property name="top-attach">9</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label7">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="tooltip-text" translatable="yes">How often the channel list is updated.</property>
+        <property name="halign">start</property>
+        <property name="label" translatable="yes">Refresh interval</property>
+      </object>
+      <packing>
+        <property name="left-attach">0</property>
+        <property name="top-attach">9</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label5">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="tooltip-text" translatable="yes">Sort selected notification channels to the top of live channels list.</property>
+        <property name="halign">start</property>
+        <property name="label" translatable="yes">Show live channels in top menu</property>
+      </object>
+      <packing>
+        <property name="left-attach">0</property>
+        <property name="top-attach">7</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkSwitch" id="first_level_live_channels">
+        <property name="visible">True</property>
+        <property name="can-focus">True</property>
+        <property name="tooltip-text" translatable="yes">Sort selected notification channels to the top of live channels list.</property>
+        <property name="halign">start</property>
+      </object>
+      <packing>
+        <property name="left-attach">1</property>
+        <property name="top-attach">7</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="halign">center</property>
+        <property name="label" translatable="yes">Miscellaneous</property>
+        <attributes>
+          <attribute name="weight" value="bold"/>
+        </attributes>
+      </object>
+      <packing>
+        <property name="left-attach">0</property>
+        <property name="top-attach">8</property>
+        <property name="width">2</property>
       </packing>
     </child>
   </object>

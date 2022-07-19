@@ -77,7 +77,11 @@ class TwitchIndicatorApp:
 
     def show_settings(self):
         """Show settings dialog."""
-        self.settings.show()
+        self.settings.show(self.on_settings_ok)
+
+    def on_settings_ok(self):
+        """Callback for settings ok button click"""
+        self.indicator.resetup_menu()
 
     def refresh_streams(self):
         """Refresh live streams list. Also push notifications when needed."""

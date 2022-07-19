@@ -33,19 +33,34 @@ class Indicator:
         self.menu_item_check_now = Gtk.MenuItem(label="Check now")
         self.menu_item_check_now.connect("activate", self.on_check_now)
 
-        menu_item_settings = Gtk.MenuItem(label="Settings")
-        menu_item_settings.connect("activate", self.on_settings)
+        self.menu_item_settings = Gtk.MenuItem(label="Settings")
+        self.menu_item_settings.connect("activate", self.on_settings)
 
-        menu_item_quit = Gtk.MenuItem(label="Quit")
-        menu_item_quit.connect("activate", self.on_quit)
+        self.menu_item_quit = Gtk.MenuItem(label="Quit")
+        self.menu_item_quit.connect("activate", self.on_quit)
+
+        self.menu_item_channels = Gtk.MenuItem(label="Live channels")
+        self.menu_item_channels.set_sensitive(False)
 
         self.stream_menu_items = []
 
-        self.menu.append(Gtk.SeparatorMenuItem())
-        self.menu.append(self.menu_item_check_now)
-        self.menu.append(menu_item_settings)
-        self.menu.append(menu_item_quit)
-        self.menu.show_all()
+        self.first_level_live_channels = self.app.settings.get().get_boolean("first-level-live-channels")
+
+        if self.first_level_live_channels:
+            self.menu.append(Gtk.SeparatorMenuItem())
+            self.menu.append(self.menu_item_check_now)
+        else:
+            self.menu.append(self.menu_item_channels)
+            self.menu.append(self.menu_item_check_now)
+            self.menu.append(Gtk.SeparatorMenuItem())
+
+        self.menu.append(self.menu_item_settings)
+        self.menu.append(self.menu_item_quit)
+        self.menu_show_all()
+
+    def resetup_menu(self):
+        self.setup_menu()
+        self.app.start_api_thread()
 
     def disable_check_now(self):
         """Disables check now button."""
@@ -61,13 +76,21 @@ class Indicator:
         """Adds streams list to menu."""
         settings = self.app.settings.get()
 
+        streams_menu = Gtk.Menu()
+        self.menu_item_channels.set_submenu(streams_menu)
+
         # Order streams by viewer count
         streams_ordered = sorted(streams, key=lambda k: -k["viewer_count"])
 
         for streamitem in self.stream_menu_items:
             self.menu.remove(streamitem)
 
+        menu = self.menu if self.first_level_live_channels else streams_menu
+
         if streams_ordered:
+            self.menu_item_channels.set_label(f"Live channels ({len(streams)})")
+            self.menu_item_channels.set_sensitive(True)
+
             # Selected channels to top
             if settings.get_boolean("show-selected-channels-on-top"):
                 enabled_channels = []
@@ -83,25 +106,32 @@ class Indicator:
                     except KeyError:
                         other_channels.append(stream)
 
-                self.create_channel_menu_items(enabled_channels, self.menu, settings)
+                self.create_channel_menu_items(enabled_channels, menu, settings)
                 sep = Gtk.SeparatorMenuItem()
-                self.menu.prepend(sep)
-                self.stream_menu_items.append(sep)
-                self.create_channel_menu_items(other_channels, self.menu, settings)
+                if self.first_level_live_channels:
+                    self.stream_menu_items.append(sep)
+                    menu.prepend(sep)
+                else:
+                    menu.append(sep)
+                self.create_channel_menu_items(other_channels, menu, settings)
 
             else:
-                self.create_channel_menu_items(streams_ordered, self.menu, settings)
+                self.create_channel_menu_items(streams_ordered, menu, settings)
 
         else:
             menu_item_nolive = Gtk.MenuItem(label="No live channels...")
             menu_item_nolive.set_sensitive(False)
             self.stream_menu_items.append(menu_item_nolive)
+            self.menu_item_channels.set_label("No live channels...")
+            self.menu_item_channels.set_sensitive(False)
 
-        self.menu.show_all()
+        self.menu.remove(self.menu_item_channels)
+        self.menu.prepend(self.menu_item_channels)
+        self.menu_show_all()
 
     def create_channel_menu_items(self, streams, streams_menu, settings):
         """Create menu items from streams array."""
-        for stream in reversed(streams):
+        for stream in streams:
             menu_entry = Gtk.ImageMenuItem()
 
             # Channel icon
@@ -123,8 +153,11 @@ class Indicator:
             menu_entry.add(label)
             menu_entry.connect("activate", self.on_stream_menu, stream["url"])
 
-            self.stream_menu_items.append(menu_entry)
-            streams_menu.prepend(menu_entry)
+            if self.first_level_live_channels:
+                self.stream_menu_items.append(menu_entry)
+                streams_menu.prepend(menu_entry)
+            else:
+                streams_menu.append(menu_entry)
 
     def abort_refresh(self, exception, message, description):
         """Updates menu with failure state message."""
@@ -140,6 +173,11 @@ class Indicator:
             self.app.notifications.show(message, description, category="network.error")
 
         self.first_fetch = False
+
+    def menu_show_all(self):
+        self.menu.show_all()
+        if self.first_level_live_channels:
+            self.menu_item_channels.hide()
 
     # UI callbacks
 

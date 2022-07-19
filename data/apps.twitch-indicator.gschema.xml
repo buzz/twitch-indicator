@@ -48,5 +48,11 @@
       <summary>Enabled channels.</summary>
       <description>Channels for which notifications are enabled.</description>
     </key>
+
+    <key type="b" name="first-level-live-channels">
+      <default>false</default>
+      <summary>Show live channels in the top menu</summary>
+      <description>Show live channels in the top menu, otherwise live channels will be in their own submenu.</description>
+    </key>
   </schema>
 </schemalist>

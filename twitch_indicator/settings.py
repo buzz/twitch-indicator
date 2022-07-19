@@ -18,7 +18,7 @@ class Settings:
         """Return settings object."""
         return self.settings
 
-    def show(self):
+    def show(self, on_ok_click):
         """Shows applet settings dialog."""
         if self.dialog:
             self.dialog.present()
@@ -46,6 +46,9 @@ class Settings:
         )
         builder.get_object("show_selected_channels_on_top").set_active(
             self.settings.get_boolean("show-selected-channels-on-top")
+        )
+        builder.get_object("first_level_live_channels").set_active(
+            self.settings.get_boolean("first-level-live-channels")
         )
         self.entry_open_command = builder.get_object("open_command")
         self.entry_open_command.set_text(self.settings.get_string("open-command"))
@@ -84,6 +87,10 @@ class Settings:
                 "show-selected-channels-on-top",
                 builder.get_object("show_selected_channels_on_top").get_active(),
             )
+            self.settings.set_boolean(
+                "first-level-live-channels",
+                builder.get_object("first_level_live_channels").get_active(),
+            )
             self.settings.set_string(
                 "open-command",
                 builder.get_object("open_command").get_text(),
@@ -92,6 +99,8 @@ class Settings:
                 "refresh-interval",
                 builder.get_object("refresh_interval").get_value_as_int(),
             )
+
+            on_ok_click()
 
         try:
             self.dialog.destroy()
