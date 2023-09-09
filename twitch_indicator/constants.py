@@ -1,7 +1,7 @@
 import os.path
 from gi.repository import GLib
 
-VERSION = "1.5"
+VERSION = "1.6"
 
 TWITCH_WEB_URL = "https://www.twitch.tv/"
 TWITCH_API_URL = "https://api.twitch.tv/helix/"
