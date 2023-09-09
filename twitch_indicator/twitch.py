@@ -28,7 +28,8 @@ class TwitchApi:
 
     def fetch_followed_channels(self, user_id):
         """Fetch user followed channels and return a list with channel ids."""
-        url = self.build_url("users/follows", {"from_id": user_id})
+        loc = "channels/followed"
+        url = self.build_url(loc, {"user_id": user_id})
         resp = self.get_api_response(url)
 
         total = int(resp["total"])
@@ -42,8 +43,8 @@ class TwitchApi:
         last = resp
         while fetched < total:
             url = self.build_url(
-                "users/follows",
-                {"after": last["pagination"]["cursor"], "from_id": user_id},
+                loc,
+                {"after": last["pagination"]["cursor"], "user_id": user_id},
             )
             nxt = self.get_api_response(url)
 
@@ -51,7 +52,7 @@ class TwitchApi:
             data += nxt["data"]
             last = nxt
 
-        return [{"id": int(data["to_id"]), "name": data["to_name"]} for data in data]
+        return [{"id": int(data["broadcaster_id"]), "name": data["broadcaster_name"]} for data in data]
 
     def fetch_live_streams(self, channel_ids):
         """Fetches live streams data from Twitch, and returns as list of

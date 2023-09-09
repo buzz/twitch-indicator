@@ -51,7 +51,7 @@ class Auth:
             "client_id": TWITCH_CLIENT_ID,
             "state": state,
             "redirect_uri": TWITCH_AUTH_REDIRECT_URI,
-            "scope": TWITCH_AUTH_SCOPES,
+            "scope": " ".join(TWITCH_AUTH_SCOPES),
         }
         url_parts[4] = urlencode(query)
         url = urlunparse(url_parts)
