@@ -1,6 +1,7 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 import logging
+from time import sleep
+from threading import Thread
 import os
 
 from gi.repository import GLib, Gtk
@@ -10,7 +11,7 @@ from twitch_indicator.constants import CONFIG_DIR
 from twitch_indicator.indicator import Indicator
 from twitch_indicator.notifications import Notifications
 from twitch_indicator.settings import Settings
-from twitch_indicator.twitch.api_thread import ApiThread
+from twitch_indicator.twitch.api_manager import ApiManager
 from twitch_indicator.util import get_data_filepath
 
 debug = os.environ.get("DEBUG", "0") == "1"
@@ -26,39 +27,51 @@ class TwitchIndicatorApp:
 
         self.followed_channels = []
         self.live_streams = []
-        self.user_id = None
+        self.user_info = None
 
         self.settings = Settings(self)
         self.indicator = Indicator(self)
         self.notifications = Notifications(self.settings.get())
         self.channel_chooser = ChannelChooser(self)
+        self.auth_dialog = None
 
         # API thread
-        self.shutdown_event = asyncio.Event()
-        self.executor = ThreadPoolExecutor(max_workers=10)
         self.api_loop = asyncio.new_event_loop()
-        self.api_thread = ApiThread(self)
-        self.executor.submit(self.api_thread.start)
+        self.api_manager = ApiManager(self)
+        self.api_thread = Thread(target=self.api_loop.run_forever)
 
-    @staticmethod
-    def run():
-        """Start Gtk main loop."""
-        Gtk.main()
+    def run(self):
+        """Start asyncio and Gtk loop."""
+        try:
+            self.api_thread.start()
+            asyncio.run_coroutine_threadsafe(self.api_manager.run(), self.api_loop)
+            Gtk.main()
+        except KeyboardInterrupt:
+            self.quit()
 
     def quit(self):
         """Close the indicator."""
         self._logger.debug("quit()")
 
-        # Stop API thread event loop and thread
-        if self.api_loop.is_running():
-            try:
-                coro = self.api_thread.stop()
-                future = asyncio.run_coroutine_threadsafe(coro, self.api_loop)
-                future.result(timeout=2)
-            except TimeoutError:
-                pass
-        self.executor.shutdown(cancel_futures=True)
+        # Stop API thread event loop
+        coro = self.api_manager.stop()
+        fut = asyncio.run_coroutine_threadsafe(coro, self.api_loop)
+        try:
+            fut.result(timeout=5)
+        except TimeoutError:
+            self._logger.warn("quit(): Not all pending tasks were stopped")
 
+        self.api_loop.call_soon_threadsafe(self.api_loop.stop)
+        sleep(0.5)
+        self.api_loop.call_soon_threadsafe(self.api_loop.close)
+        self._logger.debug("quit(): API thread loop closed")
+
+        # Stop API thread
+        self.api_thread.join()
+        self._logger.debug("quit(): API thread shut down")
+
+        if self.auth_dialog:
+            self.auth_dialog.destroy()
         if self.settings.dialog:
             self.settings.dialog.destroy()
         if self.channel_chooser.dialog:
@@ -68,9 +81,8 @@ class TwitchIndicatorApp:
 
     def clear_cache(self):
         """Clear cache."""
-        self.user_id = None
-        self.notifications.first_notification_run = True
-        self.api_loop.call_soon_threadsafe(self.api_thread.clear_cache)
+        self.user_info = None
+        self.api_loop.call_soon_threadsafe(self.api_manager.clear_cache)
 
     def show_channel_chooser(self):
         """Show channel chooser dialog."""
@@ -82,32 +94,37 @@ class TwitchIndicatorApp:
 
     def show_auth_dialog(self, auth_event):
         """Show authentication dialog."""
-        dialog = Gtk.Dialog("Twitch authentication", None, 0)
-        dialog.add_buttons(
+        self.auth_dialog = Gtk.Dialog("Twitch authentication", None, 0)
+        self.auth_dialog.add_buttons(
             Gtk.STOCK_QUIT, Gtk.ResponseType.CANCEL, "Authorize", Gtk.ResponseType.OK
         )
-        dialog.set_position(Gtk.WindowPosition.CENTER)
+        self.auth_dialog.set_position(Gtk.WindowPosition.CENTER)
 
         builder = Gtk.Builder()
         builder.add_from_file(get_data_filepath("twitch-indicator-auth.glade"))
 
-        box = dialog.get_content_area()
+        box = self.auth_dialog.get_content_area()
         box.add(builder.get_object("grid"))
 
-        response = dialog.run()
+        response = self.auth_dialog.run()
         try:
             if response == Gtk.ResponseType.OK:
-                coro = self.api_thread.acquire_token(auth_event)
+                coro = self.api_manager.acquire_token(auth_event)
                 asyncio.run_coroutine_threadsafe(coro, self.api_loop)
             else:
                 GLib.idle_add(self.quit)
         finally:
-            dialog.destroy()
+            self.auth_dialog.destroy()
+            self.auth_dialog = None
 
     def not_authorized(self, auth_event):
         """Clear cache and show authentication dialog."""
         self.clear_cache()
         self.show_auth_dialog(auth_event)
+
+    def update_user_info(self, user_info):
+        """Update user info."""
+        self.user_info = user_info
 
     @staticmethod
     def ensure_config_dir():

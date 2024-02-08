@@ -8,7 +8,7 @@ from gi.repository import GLib
 from twitch_indicator.cached_profile_image import CachedProfileImage
 from twitch_indicator.constants import (
     DEFAULT_AVATAR,
-    TWITCH_API_LIMIT,
+    TWITCH_PAGE_SIZE,
     TWITCH_API_URL,
     TWITCH_WEB_URL,
     TWITCH_CLIENT_ID,
@@ -32,24 +32,27 @@ class TwitchApi:
         self._logger.debug("Cache cleared")
 
     async def fetch_followed_channels(self, user_id):
-        """Fetch user followed channels and return a list with channel ids."""
+        """Fetch followed channels and return a list with channel ids."""
         loc = "channels/followed"
-        url = self.build_url(loc, {"user_id": user_id})
+        url = self.build_url(loc, {"user_id": user_id, "first": TWITCH_PAGE_SIZE})
         resp = await self.get_api_response(url)
 
         total = int(resp["total"])
         fetched = len(resp["data"])
         data = resp["data"]
 
-        # User has not followed any channels
         if total == 0:
-            return None
+            return []
 
         last = resp
         while fetched < total:
             url = self.build_url(
                 loc,
-                {"after": last["pagination"]["cursor"], "user_id": user_id},
+                {
+                    "after": last["pagination"]["cursor"],
+                    "user_id": user_id,
+                    "first": TWITCH_PAGE_SIZE,
+                },
             )
             nxt = await self.get_api_response(url)
 
@@ -67,13 +70,13 @@ class TwitchApi:
         Fetch live streams and return as list of dictionaries.
         """
         channel_index = 0
-        channel_max = TWITCH_API_LIMIT
+        channel_max = TWITCH_PAGE_SIZE
         channels_live = []
 
         while channel_index < len(channel_ids):
             curr_channels = channel_ids[channel_index:channel_max]
             channel_index += len(curr_channels)
-            channel_max += TWITCH_API_LIMIT
+            channel_max += TWITCH_PAGE_SIZE
 
             params = [("user_id", user_id) for user_id in curr_channels]
             url = self.build_url("streams", params)
