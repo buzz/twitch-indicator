@@ -6,9 +6,9 @@ VERSION = "1.6"
 TWITCH_WEB_URL = "https://www.twitch.tv/"
 TWITCH_API_URL = "https://api.twitch.tv/helix/"
 TWITCH_AUTH_URL = "https://id.twitch.tv/oauth2/authorize"
-TWITCH_AUTH_REDIRECT_URI = "twitch-indicator-auth://authorize"
+TWITCH_AUTH_REDIRECT_URI = "http://localhost:17563"
 TWITCH_AUTH_SCOPES = ["user:read:follows"]
-TWITCH_CLIENT_ID = "lp42a3ot0vosrva84upd4up077f6vd"
+TWITCH_CLIENT_ID = "vrulzk2tm1ozo2c1iv5a14m1ohbill"
 TWITCH_API_LIMIT = 100
 DEFAULT_AVATAR = (
     "http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png"
@@ -24,4 +24,3 @@ CACHE_DIR = os.path.join(
 )
 PROFILE_IMAGE_SIZE = 120, 120
 AUTH_TOKEN_PATH = os.path.join(CONFIG_DIR, "authtoken")
-AUTH_SOCKET_PATH = os.path.join(os.sep, "tmp", "twitch-indicator-auth-socket")

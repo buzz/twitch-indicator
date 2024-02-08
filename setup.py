@@ -4,6 +4,7 @@
 import re
 from setuptools import find_packages, setup
 
+
 # parse version (setup.py should not import module!)
 def get_version():
     """Get version using regex parsing."""
@@ -29,19 +30,16 @@ setup(
     url="https://github.com/buzz/twitch-indicator",
     packages=find_packages(),
     entry_points={
-        "console_scripts": [
-            "twitch-indicator-auth = twitch_indicator.auth_script:main"
-        ],
         "gui_scripts": ["twitch-indicator = twitch_indicator.__main__:main"],
     },
     data_files=[
         (
             "share/applications",
-            ["data/twitch-indicator.desktop", "data/twitch-indicator-auth.desktop"],
+            ["data/twitch-indicator.desktop"],
         ),
         ("share/icons", ["twitch_indicator/data/twitch-indicator.svg"]),
         ("share/glib-2.0/schemas", ["data/apps.twitch-indicator.gschema.xml"]),
     ],
     package_data={"twitch_indicator": ["data/*"]},
-    install_requires=["PyGObject"],
+    install_requires=["aiofiles", "aiohttp", "PyGObject"],
 )

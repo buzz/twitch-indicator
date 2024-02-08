@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=twitch-indicator-auth
-Comment=Twitch auth script
-Exec=twitch-indicator-auth %u
-Terminal=false
-StartupNotify=false
-MimeType=x-scheme-handler/twitch-indicator-auth
-NoDisplay=true

@@ -1,6 +1,9 @@
-import json
+import asyncio
+import logging
 from urllib.parse import urlencode, urlparse, urlunparse
-from urllib.request import urlopen, Request, HTTPError
+
+import aiohttp
+from gi.repository import GLib
 
 from twitch_indicator.cached_profile_image import CachedProfileImage
 from twitch_indicator.constants import (
@@ -16,8 +19,9 @@ from twitch_indicator.errors import NotAuthorizedException
 class TwitchApi:
     """Access Twitch API."""
 
-    def __init__(self, auth):
-        self.auth = auth
+    def __init__(self, api_thread):
+        self._logger = logging.getLogger(__name__)
+        self.api_thread = api_thread
         self.channel_info_cache = {}
         self.game_info_cache = {}
 
@@ -25,12 +29,13 @@ class TwitchApi:
         """Clear channel info and game info cache."""
         self.channel_info_cache.clear()
         self.game_info_cache.clear()
+        self._logger.debug("Cache cleared")
 
-    def fetch_followed_channels(self, user_id):
+    async def fetch_followed_channels(self, user_id):
         """Fetch user followed channels and return a list with channel ids."""
         loc = "channels/followed"
         url = self.build_url(loc, {"user_id": user_id})
-        resp = self.get_api_response(url)
+        resp = await self.get_api_response(url)
 
         total = int(resp["total"])
         fetched = len(resp["data"])
@@ -46,17 +51,20 @@ class TwitchApi:
                 loc,
                 {"after": last["pagination"]["cursor"], "user_id": user_id},
             )
-            nxt = self.get_api_response(url)
+            nxt = await self.get_api_response(url)
 
             fetched += len(nxt["data"])
             data += nxt["data"]
             last = nxt
 
-        return [{"id": int(data["broadcaster_id"]), "name": data["broadcaster_name"]} for data in data]
+        return [
+            {"id": int(data["broadcaster_id"]), "name": data["broadcaster_name"]}
+            for data in data
+        ]
 
     def fetch_live_streams(self, channel_ids):
-        """Fetches live streams data from Twitch, and returns as list of
-        dictionaries.
+        """
+        Fetch live streams and return as list of dictionaries.
         """
         channel_index = 0
         channel_max = TWITCH_API_LIMIT
@@ -81,7 +89,7 @@ class TwitchApi:
             try:
                 game_info = self.get_game_info(int(stream["game_id"]))
             except ValueError:
-                game_info = {"name": ""}
+                game_info = {"name": "[Unknown game]"}
 
             stream = {
                 "id": user_id,
@@ -133,13 +141,13 @@ class TwitchApi:
             self.game_info_cache[game_id] = resp["data"][0]
             return resp["data"][0]
 
-    def get_user_id(self):
-        """Get Twitch user ID."""
+    async def get_user_info(self):
+        """Get Twitch user info."""
         url = self.build_url("users")
-        resp = self.get_api_response(url)
+        resp = await self.get_api_response(url)
         if not len(resp["data"]) == 1:
             return ValueError("Bad API response.")
-        return int(resp["data"][0]["id"])
+        return resp["data"][0]
 
     @staticmethod
     def build_url(loc, params=None):
@@ -150,19 +158,34 @@ class TwitchApi:
             url_parts[4] = urlencode(params)
         return urlunparse(url_parts)
 
-    def get_api_response(self, url):
-        """Decode JSON API response."""
-        if not self.auth.token:
-            raise NotAuthorizedException
-        headers = {
-            "Client-ID": TWITCH_CLIENT_ID,
-            "Authorization": f"Bearer {self.auth.token}",
-        }
-        req = Request(url, headers=headers)
-        try:
-            with urlopen(req) as response:
-                return json.loads(response.read())
-        except HTTPError as err:
-            if err.code == 401:
-                raise NotAuthorizedException from err
-            raise err
+    async def get_api_response(self, url):
+        """Perform API request."""
+        attempts = 3
+        attempt = 0
+        while attempt < attempts:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    self._logger.debug(f"Request: {url}")
+                    if self.api_thread.auth.token is None:
+                        raise NotAuthorizedException
+                    headers = {
+                        "Client-ID": TWITCH_CLIENT_ID,
+                        "Authorization": f"Bearer {self.api_thread.auth.token}",
+                    }
+                    async with session.get(url, headers=headers) as response:
+                        if response.status == 200:
+                            return await response.json()
+                        elif response.status == 401:
+                            self.api_thread.auth.token = None
+                            raise NotAuthorizedException
+                        else:
+                            raise aiohttp.ClientConnectorError(
+                                f"Unexpected status code: {response.status}"
+                            )
+            except NotAuthorizedException:
+                self._logger.info("Not authorized")
+                attempt += 1
+                auth_event = asyncio.Event()
+                GLib.idle_add(self.api_thread.app.not_authorized, auth_event)
+                self._logger.debug("Waiting for authorization")
+                await auth_event.wait()

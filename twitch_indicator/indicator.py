@@ -29,9 +29,6 @@ class Indicator:
         """Setup menu."""
         self.menu = Gtk.Menu()
 
-        self.menu_item_check_now = Gtk.MenuItem(label="Check now")
-        self.menu_item_check_now.connect("activate", self.on_check_now)
-
         self.menu_item_channels = Gtk.MenuItem(label="Live channels")
         self.menu_item_channels.set_sensitive(False)
 
@@ -43,16 +40,6 @@ class Indicator:
 
         self.app_indicator.set_menu(self.menu)
         self.refresh_menu_items()
-
-    def disable_check_now(self):
-        """Disables check now button."""
-        self.menu_item_check_now.set_sensitive(False)
-        self.menu_item_check_now.set_label("Checking...")
-
-    def enable_check_now(self):
-        """Enables check now button."""
-        self.menu_item_check_now.set_sensitive(True)
-        self.menu_item_check_now.set_label("Check now")
 
     def add_streams_menu(self, streams):
         """Adds streams list to menu."""
@@ -127,7 +114,6 @@ class Indicator:
         """Updates menu with failure state message."""
         self.menu_item_channels.set_label(message)
         self.menu_item_channels.set_sensitive(False)
-        self.enable_check_now()
         self.refresh_menu_items()
 
         # Skip error notification on first fetch (internet might not be up)
@@ -143,7 +129,6 @@ class Indicator:
         """Refresh all menu by removing and re-adding menu items."""
         for menu_item in self.menu.get_children():
             self.menu.remove(menu_item)
-        self.menu.append(self.menu_item_check_now)
         self.menu.append(self.menu_item_channels)
         self.menu.append(Gtk.SeparatorMenuItem())
         self.menu.append(self.menu_item_settings)
@@ -155,10 +140,6 @@ class Indicator:
     def on_quit(self, _):
         """Callback for quit menu item."""
         self.app.quit()
-
-    def on_check_now(self, _):
-        """Callback for check now menu item."""
-        self.app.start_api_thread()
 
     def on_settings(self, _):
         """Callback for settings menu item."""
