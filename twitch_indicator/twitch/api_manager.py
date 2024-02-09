@@ -29,18 +29,37 @@ class ApiManager:
         try:
             self._logger.debug("run()")
 
+            # Restore token
             await self.auth.restore_token()
-            self.user_info = await self.api.get_user_info()
-            self._logger.debug(f"Got user info: {self.user_info}")
 
+            # Validate token
+            self.user_info = await self.api.validate()
+            self._logger.debug(f"run(): Validated: {self.user_info}")
             GLib.idle_add(self.app.update_user_info, self.user_info)
 
-            self._logger.debug("Get followed channels")
+            # Get user info
+            # self.user_info = await self.api.get_user_info()
+            # self._logger.debug(f"run(): Got user info: {self.user_info}")
+
+            # Get followed channels
             followed_channels = await self.api.fetch_followed_channels(
-                self.user_info["id"]
+                self.user_info["user_id"]
             )
-            for c in followed_channels:
-                print(f"ID={c['id']} Name={c['name']}")
+            self._logger.debug("run(): Got followed channels")
+            GLib.idle_add(self.app.update_followed_channels, followed_channels)
+
+            # Get live streams
+            live_streams = await self.api.fetch_live_streams(self.user_info["user_id"])
+            self._logger.debug(f"run(): Got live streams ({len(live_streams)})")
+            for channel in live_streams:
+                print(
+                    f"channel: {channel['user_name']} ({channel['user_id']}) - Category: {channel['game_name']} - Title: {channel['title']} - Viewers: {channel['viewer_count']}"
+                )
+            GLib.idle_add(self.app.indicator.add_streams_menu, live_streams)
+
+            # Ensure current profile pictures
+            await self.api.fetch_profile_pictures(live_streams)
+
         except Exception as e:
             self._logger.exception(e)
         finally:
@@ -54,7 +73,3 @@ class ApiManager:
             self._logger.exception(e)
         finally:
             self._logger.debug("acquire_token(): task done")
-
-    def clear_cache(self):
-        """Clear API cache."""
-        self.api.clear_cache()

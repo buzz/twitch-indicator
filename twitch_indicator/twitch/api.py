@@ -1,19 +1,23 @@
 import asyncio
 import logging
+import re
 from urllib.parse import urlencode, urlparse, urlunparse
+import time
 
+import aiofiles
+from aiofiles.os import path
 import aiohttp
 from gi.repository import GLib
 
-from twitch_indicator.cached_profile_image import CachedProfileImage
 from twitch_indicator.constants import (
     DEFAULT_AVATAR,
     TWITCH_PAGE_SIZE,
     TWITCH_API_URL,
-    TWITCH_WEB_URL,
+    TWITCH_AUTH_URL,
     TWITCH_CLIENT_ID,
 )
 from twitch_indicator.errors import NotAuthorizedException
+from twitch_indicator.util import get_image_filename
 
 
 class TwitchApi:
@@ -22,20 +26,31 @@ class TwitchApi:
     def __init__(self, api_thread):
         self._logger = logging.getLogger(__name__)
         self.api_thread = api_thread
-        self.channel_info_cache = {}
-        self.game_info_cache = {}
 
-    def clear_cache(self):
-        """Clear channel info and game info cache."""
-        self.channel_info_cache.clear()
-        self.game_info_cache.clear()
-        self._logger.debug("Cache cleared")
+    async def validate(self):
+        """
+        Validate token.
+
+        https://dev.twitch.tv/docs/authentication/validate-tokens/
+        """
+        self._logger.debug("validate()")
+
+        url = self._build_url("validate", url=TWITCH_AUTH_URL)
+        resp = await self._get_api_response(url)
+
+        return resp
 
     async def fetch_followed_channels(self, user_id):
-        """Fetch followed channels and return a list with channel ids."""
+        """
+        Fetch followed channels and return as list of dictionaries.
+
+        https://dev.twitch.tv/docs/api/reference/#get-followed-channels
+        """
+        self._logger.debug("fetch_followed_channels()")
+
         loc = "channels/followed"
-        url = self.build_url(loc, {"user_id": user_id, "first": TWITCH_PAGE_SIZE})
-        resp = await self.get_api_response(url)
+        url = self._build_url(loc, {"user_id": user_id, "first": TWITCH_PAGE_SIZE})
+        resp = await self._get_api_response(url)
 
         total = int(resp["total"])
         fetched = len(resp["data"])
@@ -46,7 +61,7 @@ class TwitchApi:
 
         last = resp
         while fetched < total:
-            url = self.build_url(
+            url = self._build_url(
                 loc,
                 {
                     "after": last["pagination"]["cursor"],
@@ -54,114 +69,113 @@ class TwitchApi:
                     "first": TWITCH_PAGE_SIZE,
                 },
             )
-            nxt = await self.get_api_response(url)
+            nxt = await self._get_api_response(url)
 
             fetched += len(nxt["data"])
             data += nxt["data"]
             last = nxt
 
-        return [
-            {"id": int(data["broadcaster_id"]), "name": data["broadcaster_name"]}
-            for data in data
-        ]
+        return data
 
-    def fetch_live_streams(self, channel_ids):
+    async def fetch_live_streams(self, user_id):
         """
         Fetch live streams and return as list of dictionaries.
+
+        https://dev.twitch.tv/docs/api/reference/#get-followed-streams
         """
-        channel_index = 0
-        channel_max = TWITCH_PAGE_SIZE
-        channels_live = []
+        self._logger.debug("fetch_live_channels()")
 
-        while channel_index < len(channel_ids):
-            curr_channels = channel_ids[channel_index:channel_max]
-            channel_index += len(curr_channels)
-            channel_max += TWITCH_PAGE_SIZE
+        loc = "streams/followed"
+        url = self._build_url(loc, {"user_id": user_id, "first": TWITCH_PAGE_SIZE})
+        resp = await self._get_api_response(url)
 
-            params = [("user_id", user_id) for user_id in curr_channels]
-            url = self.build_url("streams", params)
-            resp = self.get_api_response(url)
+        fetched = len(resp["data"])
+        data = resp["data"]
 
-            for channel in resp["data"]:
-                channels_live.append(channel)
+        if fetched == 0:
+            return []
 
-        streams = []
-        for stream in channels_live:
-            user_id = int(stream["user_id"])
-            channel_info = self.get_channel_info(user_id)
+        last = resp
+        while fetched == TWITCH_PAGE_SIZE:
+            url = self._build_url(
+                loc,
+                {
+                    "after": last["pagination"]["cursor"],
+                    "user_id": user_id,
+                    "first": TWITCH_PAGE_SIZE,
+                },
+            )
+            nxt = await self._get_api_response(url)
+
+            fetched = len(nxt["data"])
+            data += nxt["data"]
+            last = nxt
+
+        return data
+
+    async def fetch_profile_pictures(self, streams):
+        """
+        Download profile picture if current one is older than 3 days.
+
+        https://dev.twitch.tv/docs/api/reference/#get-users
+        """
+        self._logger.debug("fetch_profile_pictures()")
+
+        # Skip images newer than 3 days
+        user_ids = []
+        three_days = 3 * 24 * 60 * 60
+        for user_id in [s["user_id"] for s in streams]:
+            filename = get_image_filename(user_id)
             try:
-                game_info = self.get_game_info(int(stream["game_id"]))
-            except ValueError:
-                game_info = {"name": "[Unknown game]"}
+                time_diff = time.time() - await path.getmtime(filename)
+                if time_diff > three_days:
+                    user_ids.append(user_id)
+            except FileNotFoundError:
+                user_ids.append(user_id)
 
-            stream = {
-                "id": user_id,
-                "name": channel_info["display_name"],
-                "game": game_info["name"],
-                "title": stream["title"],
-                "image": channel_info["profile_image_url"],
-                "pixbuf": channel_info["pixbuf"],
-                "url": f"{TWITCH_WEB_URL}{channel_info['login']}",
-                "viewer_count": stream["viewer_count"],
-            }
-            streams.append(stream)
+        # Fetch profile image URLs
+        profile_urls = {}
+        idx = 0
+        max = TWITCH_PAGE_SIZE
+        while idx < len(user_ids):
+            curr_user_ids = user_ids[idx:max]
 
-        return streams
+            params = [("id", id) for id in curr_user_ids]
+            url = self._build_url("users", params)
+            resp = await self._get_api_response(url)
 
-    def get_channel_info(self, channel_id):
-        """Get channel info."""
-        try:
-            return self.channel_info_cache[channel_id]
-        except KeyError:
-            url = self.build_url("users", {"id": channel_id})
-            resp = self.get_api_response(url)
-            if not len(resp["data"]) == 1:
-                return ValueError("Bad API response.")
-            channel_info = resp["data"][0]
+            for d in resp["data"]:
+                profile_urls[d["id"]] = d["profile_image_url"]
 
-            # Channel image
-            if channel_info["profile_image_url"]:
-                channel_info["pixbuf"] = CachedProfileImage.new_from_profile_url(
-                    channel_id, channel_info["profile_image_url"]
-                )
-            else:
-                channel_info["pixbuf"] = CachedProfileImage.new_from_profile_url(
-                    "default", DEFAULT_AVATAR
-                )
+            idx += len(curr_user_ids)
+            max += TWITCH_PAGE_SIZE
 
-            self.channel_info_cache[channel_id] = channel_info
-            return channel_info
-
-    def get_game_info(self, game_id):
-        """Get game info."""
-        try:
-            return self.game_info_cache[game_id]
-        except KeyError:
-            url = self.build_url("games", {"id": game_id})
-            resp = self.get_api_response(url)
-            if not len(resp["data"]) == 1:
-                return ValueError("Bad API response.")
-            self.game_info_cache[game_id] = resp["data"][0]
-            return resp["data"][0]
-
-    async def get_user_info(self):
-        """Get Twitch user info."""
-        url = self.build_url("users")
-        resp = await self.get_api_response(url)
-        if not len(resp["data"]) == 1:
-            return ValueError("Bad API response.")
-        return resp["data"][0]
+        # Download images
+        for user_id, profile_image_url in profile_urls.items():
+            # Download 150x150 variant
+            async with aiohttp.ClientSession() as session:
+                url = re.sub(r"-\d+x\d+", "-150x150", profile_image_url)
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        # Save image
+                        img_data = await response.read()
+                        filename = get_image_filename(user_id)
+                        async with aiofiles.open(filename, "wb") as f:
+                            await f.write(img_data)
+                            self._logger.debug(
+                                f"fetch_profile_pictures(): Saved {filename}"
+                            )
 
     @staticmethod
-    def build_url(loc, params=None):
+    def _build_url(path_append, params=None, url=TWITCH_API_URL):
         """Construct API URL."""
-        url_parts = list(urlparse(TWITCH_API_URL))
-        url_parts[2] += loc
+        url_parts = urlparse(url)
+        url_parts = url_parts._replace(path=url_parts.path + path_append)
         if params:
-            url_parts[4] = urlencode(params)
+            url_parts = url_parts._replace(query=urlencode(params))
         return urlunparse(url_parts)
 
-    async def get_api_response(self, url):
+    async def _get_api_response(self, url):
         """Perform API request."""
         attempts = 3
         attempt = 0
@@ -181,14 +195,9 @@ class TwitchApi:
                         elif response.status == 401:
                             self.api_thread.auth.token = None
                             raise NotAuthorizedException
-                        else:
-                            raise aiohttp.ClientConnectorError(
-                                f"Unexpected status code: {response.status}"
-                            )
             except NotAuthorizedException:
-                self._logger.info("Not authorized")
+                self._logger.info("_get_api_response(): Not authorized")
                 attempt += 1
                 auth_event = asyncio.Event()
                 GLib.idle_add(self.api_thread.app.not_authorized, auth_event)
-                self._logger.debug("Waiting for authorization")
                 await auth_event.wait()

@@ -53,16 +53,17 @@ class Auth:
         redirect_uri_parts = urlparse(TWITCH_AUTH_REDIRECT_URI)
         site = web.TCPSite(runner, redirect_uri_parts.hostname, redirect_uri_parts.port)
         await site.start()
-        self._logger.info("Started OAuth webserver")
+        self._logger.info("acquire_token(): Started OAuth webserver")
         try:
             # Open Twich auth URL
+            # TODO: consolidate with other webbrowser logic
             webbrowser.open_new_tab(auth_url)
             await self._token_acquired_event.wait()
             self._token_acquired_event = None
             self._state = None
             await runner.shutdown()
             await runner.cleanup()
-            self._logger.info("Stopped OAuth webserver")
+            self._logger.info("acquire_token(): Stopped OAuth webserver")
             auth_event.set()
         except asyncio.CancelledError:
             pass
@@ -117,6 +118,7 @@ class Auth:
         rand = SystemRandom()
         state = "".join(rand.choice(UNICODE_ASCII_CHARACTER_SET) for x in range(30))
         url_parts = urlparse(TWITCH_AUTH_URL)
+        url_parts = url_parts._replace(path=url_parts.path + "authorize")
         query = {
             "client_id": TWITCH_CLIENT_ID,
             "force_verify": False,

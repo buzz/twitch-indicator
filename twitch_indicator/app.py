@@ -4,10 +4,10 @@ from time import sleep
 from threading import Thread
 import os
 
-from gi.repository import GLib, Gtk
+from gi.repository import Gdk, GLib, Gtk
 
 from twitch_indicator.channel_chooser import ChannelChooser
-from twitch_indicator.constants import CONFIG_DIR
+from twitch_indicator.constants import CACHE_DIR, CONFIG_DIR
 from twitch_indicator.indicator import Indicator
 from twitch_indicator.notifications import Notifications
 from twitch_indicator.settings import Settings
@@ -23,7 +23,7 @@ class TwitchIndicatorApp:
 
     def __init__(self):
         self._logger = logging.getLogger(__name__)
-        self.ensure_config_dir()
+        self.ensure_dirs()
 
         self.followed_channels = []
         self.live_streams = []
@@ -43,6 +43,13 @@ class TwitchIndicatorApp:
     def run(self):
         """Start asyncio and Gtk loop."""
         try:
+            screen = Gdk.Screen.get_default()
+            css_provider = Gtk.CssProvider()
+            css_provider.load_from_path(get_data_filepath("style.css"))
+            Gtk.StyleContext.add_provider_for_screen(
+                screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            )
+
             self.api_thread.start()
             asyncio.run_coroutine_threadsafe(self.api_manager.run(), self.api_loop)
             Gtk.main()
@@ -79,11 +86,6 @@ class TwitchIndicatorApp:
 
         Gtk.main_quit()
 
-    def clear_cache(self):
-        """Clear cache."""
-        self.user_info = None
-        self.api_loop.call_soon_threadsafe(self.api_manager.clear_cache)
-
     def show_channel_chooser(self):
         """Show channel chooser dialog."""
         self.channel_chooser.show()
@@ -119,14 +121,19 @@ class TwitchIndicatorApp:
 
     def not_authorized(self, auth_event):
         """Clear cache and show authentication dialog."""
-        self.clear_cache()
+        self.user_info = None
         self.show_auth_dialog(auth_event)
 
     def update_user_info(self, user_info):
         """Update user info."""
         self.user_info = user_info
 
+    def update_followed_channels(self, followed_channels):
+        """Update followed channels."""
+        self.followed_channels = followed_channels
+
     @staticmethod
-    def ensure_config_dir():
-        """Create config dir if it doesn't exist."""
+    def ensure_dirs():
+        """Create app dirs if they don't exist."""
         os.makedirs(CONFIG_DIR, exist_ok=True)
+        os.makedirs(CACHE_DIR, exist_ok=True)

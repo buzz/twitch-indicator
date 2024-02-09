@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.38.2 -->
+<!-- Generated with glade 3.40.0 -->
 <interface>
-  <requires lib="gtk+" version="3.12"/>
+  <requires lib="gtk+" version="3.22"/>
+  <!-- interface-css-provider-path style.css -->
   <!-- n-columns=2 n-rows=10 -->
   <object class="GtkGrid" id="grid1">
     <property name="visible">True</property>
@@ -17,11 +18,11 @@
       <object class="GtkLabel">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
-        <property name="halign">center</property>
+        <property name="halign">start</property>
         <property name="label" translatable="yes">Notifications</property>
-        <attributes>
-          <attribute name="weight" value="bold"/>
-        </attributes>
+        <style>
+          <class name="header"/>
+        </style>
       </object>
       <packing>
         <property name="left-attach">0</property>
@@ -58,11 +59,11 @@
       <object class="GtkLabel">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
-        <property name="halign">center</property>
+        <property name="halign">start</property>
         <property name="label" translatable="yes">Miscellaneous</property>
-        <attributes>
-          <attribute name="weight" value="bold"/>
-        </attributes>
+        <style>
+          <class name="header"/>
+        </style>
       </object>
       <packing>
         <property name="left-attach">0</property>
@@ -103,11 +104,11 @@ Available placeholders:
       <object class="GtkLabel">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
-        <property name="halign">center</property>
+        <property name="halign">start</property>
         <property name="label" translatable="yes">Channel list</property>
-        <attributes>
-          <attribute name="weight" value="bold"/>
-        </attributes>
+        <style>
+          <class name="header"/>
+        </style>
       </object>
       <packing>
         <property name="left-attach">0</property>

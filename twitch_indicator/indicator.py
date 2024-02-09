@@ -1,11 +1,12 @@
 import webbrowser
-import os
 import subprocess
 from urllib.request import HTTPError
+from urllib.parse import urlparse, urlunparse
 
-from gi.repository import AppIndicator3
-from gi.repository import Gtk, GLib
+from gi.repository import AppIndicator3, GdkPixbuf, Gtk, GLib
 
+from twitch_indicator.cached_profile_image import CachedProfileImage
+from twitch_indicator.constants import TWITCH_WEB_URL
 from twitch_indicator.util import format_viewer_count, get_data_filepath
 
 
@@ -63,7 +64,7 @@ class Indicator:
 
                 for stream in streams_ordered:
                     try:
-                        if enabled_channel_ids[stream["id"]]:
+                        if enabled_channel_ids[stream["user_id"]]:
                             enabled_channels.append(stream)
                         else:
                             other_channels.append(stream)
@@ -90,15 +91,16 @@ class Indicator:
             menu_entry = Gtk.ImageMenuItem()
 
             # Channel icon
-            pixbuf = stream["pixbuf"]
+            pixbuf = CachedProfileImage.new_from_cached(stream["user_id"])
+            pixbuf.scale_simple(32, 32, GdkPixbuf.InterpType.BILINEAR)
             icon = Gtk.Image.new_from_pixbuf(pixbuf)
             menu_entry.set_image(icon)
 
             # Channel label
             label = Gtk.Label()
-            markup = f"<b>{GLib.markup_escape_text(stream['name'])}</b>"
-            if settings.get_boolean("show-game-playing") and stream["game"]:
-                markup += f" • {GLib.markup_escape_text(stream['game'])}"
+            markup = f"<b>{GLib.markup_escape_text(stream['user_name'])}</b>"
+            if settings.get_boolean("show-game-playing") and stream["game_name"]:
+                markup += f" • {GLib.markup_escape_text(stream['game_name'])}"
             if settings.get_boolean("show-viewer-count"):
                 viewer_count = format_viewer_count(stream["viewer_count"])
                 markup += f" (<small>{viewer_count}</small>)"
@@ -106,7 +108,9 @@ class Indicator:
             label.set_markup(markup)
             label.set_halign(Gtk.Align.START)
             menu_entry.add(label)
-            menu_entry.connect("activate", self.on_stream_menu, stream["url"])
+            url_parts = urlparse(TWITCH_WEB_URL)
+            url = urlunparse(url_parts._replace(path=stream["user_login"]))
+            menu_entry.connect("activate", self.on_stream_menu, url)
 
             streams_menu.append(menu_entry)
 
@@ -149,5 +153,5 @@ class Indicator:
         """Callback for stream menu item."""
         browser = webbrowser.get().basename
         cmd = self.app.settings.get().get_string("open-command")
-        formated = cmd.format(url=url, browser=browser).split()
-        subprocess.Popen(formated)
+        formatted = cmd.format(url=url, browser=browser).split()
+        subprocess.Popen(formatted)
