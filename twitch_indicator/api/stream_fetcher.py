@@ -9,7 +9,7 @@ class StreamFetcher:
 
     def refresh_streams(self):
         """Refresh live streams list. Also push notifications when needed."""
-        settings = self.settings.get()
+        settings = self.settings
 
         GLib.idle_add(self.indicator.disable_check_now)
 
@@ -86,8 +86,6 @@ class StreamFetcher:
                 if settings.get_boolean("enable-notifications"):
                     GLib.idle_add(self.notifications.show_streams, notify_list)
 
-        self.indicator.first_fetch = False
-
         # Schedule next periodic fetch
         GLib.idle_add(self.start_timer)
 
@@ -96,7 +94,7 @@ class StreamFetcher:
 
     def refresh_failed(self, msg, err):
         """Handle network error while fetching data."""
-        interval = self.settings.get().get_int("refresh-interval")
+        interval = self.settings.get_int("refresh-interval")
         GLib.idle_add(
             self.indicator.abort_refresh,
             err,

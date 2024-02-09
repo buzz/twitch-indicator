@@ -10,12 +10,11 @@ from twitch_indicator.util import format_viewer_count
 class Notifications:
     """Keep track of notifications."""
 
-    def __init__(self, settings):
-        self.settings = settings
+    def __init__(self, gui_manager):
+        self._gui_manager = gui_manager
+        self._notifications = []
+
         Notify.init("Twitch Indicator")
-        self.notifications = []
-        # Avoid initial notification spam
-        self.first_notification_run = True
 
     def show(self, msg, descr, action=None, category="", image=None):
         """Show notification and store in list."""
@@ -26,58 +25,56 @@ class Notifications:
 
         if action:
             # Keep a reference to notifications, otherwise action callback won't work
-            self.notifications.append(notification)
+            self._notifications.append(notification)
             notification.add_action(*action)
-            notification.connect("closed", self.on_closed)
+            notification.connect("closed", self._on_closed)
 
         notification.show()
 
     def show_streams(self, streams):
         """Show notification for streams, passed as a list of dictionaries."""
-        if not self.first_notification_run:
-            for stream in streams:
-                show_game_playing = self.settings.get_boolean("show-game-playing")
-                show_viewer_count = self.settings.get_boolean("show-viewer-count")
+        settings = self._gui_manager.app.settings
+        for stream in streams:
+            show_game_playing = settings.get_boolean("show-game-playing")
+            show_viewer_count = settings.get_boolean("show-viewer-count")
 
-                msg = f"{stream['name']} just went LIVE!"
-                descr = f"{stream['title']}"
+            msg = f"{stream['name']} just went LIVE!"
+            descr = f"{stream['title']}"
 
-                if show_game_playing or show_viewer_count:
-                    descr += "\n"
-                    if show_game_playing:
-                        descr += f"\nPlaying: <b>{stream['game']}</b>"
-                    if show_viewer_count:
-                        viewer_count = format_viewer_count(stream["viewer_count"])
-                        descr += f"\nViewers: <b>{viewer_count}</b>"
+            if show_game_playing or show_viewer_count:
+                descr += "\n"
+                if show_game_playing:
+                    descr += f"\nPlaying: <b>{stream['game']}</b>"
+                if show_viewer_count:
+                    viewer_count = format_viewer_count(stream["viewer_count"])
+                    descr += f"\nViewers: <b>{viewer_count}</b>"
 
-                try:
-                    pixbuf = CachedProfileImage.new_from_cached(stream["id"])
-                except GLib.Error:
-                    pixbuf = None
+            try:
+                pixbuf = CachedProfileImage.new_from_cached(stream["id"])
+            except GLib.Error:
+                pixbuf = None
 
-                action = (
-                    "watch",
-                    "Watch",
-                    self.on_notification_watch,
-                    stream["url"],
-                )
-                self.show(
-                    msg,
-                    descr,
-                    action=action,
-                    category="presence.online",
-                    image=pixbuf,
-                )
-        else:
-            self.first_notification_run = False
+            action = (
+                "watch",
+                "Watch",
+                self._on_notification_watch,
+                stream["url"],
+            )
+            self.show(
+                msg,
+                descr,
+                action=action,
+                category="presence.online",
+                image=pixbuf,
+            )
 
-    def on_closed(self, notification):
+    def _on_closed(self, notification):
         """Called when notification is closed."""
-        self.notifications.remove(notification)
+        self._notifications.remove(notification)
 
-    def on_notification_watch(self, _, __, url):
+    def _on_notification_watch(self, _, __, url):
         """Callback for notification stream watch action."""
         browser = webbrowser.get().basename
-        cmd = self.settings.get_string("open-command")
+        cmd = self._gui_manager.app.settings.get_string("open-command")
         formated = cmd.format(url=url, browser=browser).split()
         subprocess.Popen(formated)

@@ -23,9 +23,9 @@ from twitch_indicator.util import get_image_filename
 class TwitchApi:
     """Access Twitch API."""
 
-    def __init__(self, api_thread):
+    def __init__(self, api_manager):
         self._logger = logging.getLogger(__name__)
-        self.api_thread = api_thread
+        self._api_manager = api_manager
 
     async def validate(self):
         """
@@ -183,21 +183,22 @@ class TwitchApi:
             try:
                 async with aiohttp.ClientSession() as session:
                     self._logger.debug(f"Request: {url}")
-                    if self.api_thread.auth.token is None:
+                    if self._api_manager.auth.token is None:
                         raise NotAuthorizedException
                     headers = {
                         "Client-ID": TWITCH_CLIENT_ID,
-                        "Authorization": f"Bearer {self.api_thread.auth.token}",
+                        "Authorization": f"Bearer {self._api_manager.auth.token}",
                     }
                     async with session.get(url, headers=headers) as response:
                         if response.status == 200:
                             return await response.json()
                         elif response.status == 401:
-                            self.api_thread.auth.token = None
+                            self._api_manager.auth.token = None
                             raise NotAuthorizedException
             except NotAuthorizedException:
                 self._logger.info("_get_api_response(): Not authorized")
                 attempt += 1
                 auth_event = asyncio.Event()
-                GLib.idle_add(self.api_thread.app.not_authorized, auth_event)
+                GLib.idle_add(self._api_manager.app.not_authorized, auth_event)
+                # Wait for auth flow to finish
                 await auth_event.wait()

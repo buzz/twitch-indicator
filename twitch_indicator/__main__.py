@@ -1,5 +1,3 @@
-# pylint: disable=wrong-import-position
-
 import gi
 
 gi.require_version("AppIndicator3", "0.1")
