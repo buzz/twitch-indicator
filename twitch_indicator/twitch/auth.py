@@ -1,9 +1,9 @@
 import asyncio
 import logging
-from random import SystemRandom
-from os import chmod
-from urllib.parse import urlencode, urlparse, urlunparse
 import webbrowser
+from os import chmod
+from random import SystemRandom
+from urllib.parse import urlencode, urlparse, urlunparse
 
 import aiofiles
 from aiofiles.os import path
@@ -12,8 +12,8 @@ from aiohttp import web
 from twitch_indicator.constants import (
     AUTH_TOKEN_PATH,
     TWITCH_AUTH_REDIRECT_URI,
-    TWITCH_AUTH_URL,
     TWITCH_AUTH_SCOPES,
+    TWITCH_AUTH_URL,
     TWITCH_CLIENT_ID,
     UNICODE_ASCII_CHARACTER_SET,
 )

@@ -1,3 +1,10 @@
 {
-    "python.linting.pylintEnabled": true
+    "[python]": {
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        },
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true
+    },
+    "isort.args": ["--profile", "black"]
 }

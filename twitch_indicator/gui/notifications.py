@@ -1,9 +1,9 @@
-import webbrowser
-import os
 import subprocess
-from gi.repository import Notify, GLib
+import webbrowser
 
-from twitch_indicator.cached_profile_image import CachedProfileImage
+from gi.repository import GLib, Notify
+
+from twitch_indicator.gui.cached_profile_image import CachedProfileImage
 from twitch_indicator.util import format_viewer_count
 
 

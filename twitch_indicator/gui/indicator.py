@@ -1,12 +1,12 @@
-import webbrowser
 import subprocess
-from urllib.request import HTTPError
+import webbrowser
 from urllib.parse import urlparse, urlunparse
+from urllib.request import HTTPError
 
-from gi.repository import AppIndicator3, GdkPixbuf, Gtk, GLib
+from gi.repository import AppIndicator3, GdkPixbuf, GLib, Gtk
 
-from twitch_indicator.cached_profile_image import CachedProfileImage
 from twitch_indicator.constants import TWITCH_WEB_URL
+from twitch_indicator.gui.cached_profile_image import CachedProfileImage
 from twitch_indicator.util import format_viewer_count, get_data_filepath
 
 

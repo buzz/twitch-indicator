@@ -1,20 +1,20 @@
 import asyncio
 import logging
 import re
-from urllib.parse import urlencode, urlparse, urlunparse
 import time
+from urllib.parse import urlencode, urlparse, urlunparse
 
 import aiofiles
-from aiofiles.os import path
 import aiohttp
+from aiofiles.os import path
 from gi.repository import GLib
 
 from twitch_indicator.constants import (
     DEFAULT_AVATAR,
-    TWITCH_PAGE_SIZE,
     TWITCH_API_URL,
     TWITCH_AUTH_URL,
     TWITCH_CLIENT_ID,
+    TWITCH_PAGE_SIZE,
 )
 from twitch_indicator.errors import NotAuthorizedException
 from twitch_indicator.util import get_image_filename

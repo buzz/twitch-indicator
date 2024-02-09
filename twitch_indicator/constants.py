@@ -1,4 +1,5 @@
 import os.path
+
 from gi.repository import GLib
 
 VERSION = "1.6"

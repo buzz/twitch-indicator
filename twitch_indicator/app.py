@@ -1,16 +1,16 @@
 import asyncio
 import logging
-from time import sleep
-from threading import Thread
 import os
+from threading import Thread
+from time import sleep
 
 from gi.repository import Gdk, GLib, Gtk
 
-from twitch_indicator.channel_chooser import ChannelChooser
 from twitch_indicator.constants import CACHE_DIR, CONFIG_DIR
-from twitch_indicator.indicator import Indicator
-from twitch_indicator.notifications import Notifications
-from twitch_indicator.settings import Settings
+from twitch_indicator.gui.channel_chooser import ChannelChooser
+from twitch_indicator.gui.indicator import Indicator
+from twitch_indicator.gui.notifications import Notifications
+from twitch_indicator.gui.settings import Settings
 from twitch_indicator.twitch.api_manager import ApiManager
 from twitch_indicator.util import get_data_filepath
 
