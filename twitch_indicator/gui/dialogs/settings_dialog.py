@@ -22,6 +22,8 @@ class SettingsDialog:
         settings = self._gui_manager.app.settings
 
         self._dialog = Gtk.Dialog("Settings", None, 0)
+        self._dialog.set_border_width(10)
+        self._dialog.set_resizable(False)
         self._dialog.add_buttons(
             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK
         )
@@ -102,9 +104,12 @@ class SettingsDialog:
         """Callback for channel chooser menu item."""
         self._dialog.set_sensitive(False)
         try:
-            self._gui_manager.show_channel_chooser()
+            self._gui_manager.show_channel_chooser(self._dialog)
         finally:
-            self._dialog.set_sensitive(True)
+            try:
+                self._dialog.set_sensitive(True)
+            except AttributeError:
+                pass
 
     def _on_btn_revert_open_commed_clicked(self, _):
         """Revert open command to default."""

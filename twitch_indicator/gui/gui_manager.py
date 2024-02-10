@@ -1,10 +1,10 @@
 from gi.repository import Gdk, Gtk
 
-from twitch_indicator.gui.auth_dialog import AuthDialog
-from twitch_indicator.gui.channel_chooser_dialog import ChannelChooserDialog
+from twitch_indicator.gui.dialogs.auth_dialog import AuthDialog
+from twitch_indicator.gui.dialogs.channel_chooser_dialog import ChannelChooserDialog
+from twitch_indicator.gui.dialogs.settings_dialog import SettingsDialog
 from twitch_indicator.gui.indicator import Indicator
 from twitch_indicator.gui.notifications import Notifications
-from twitch_indicator.gui.settings_dialog import SettingsDialog
 from twitch_indicator.util import get_data_filepath
 
 
@@ -31,9 +31,9 @@ class GuiManager:
 
         Gtk.main_quit()
 
-    def show_channel_chooser(self):
+    def show_channel_chooser(self, settings_dialog):
         """Show channel chooser dialog."""
-        self.channel_chooser_dialog.show()
+        self.channel_chooser_dialog.show(settings_dialog)
 
     def show_settings(self):
         """Show settings dialog."""

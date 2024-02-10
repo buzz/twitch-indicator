@@ -1,5 +1,6 @@
 import os
 import subprocess
+import traceback
 import webbrowser
 from datetime import datetime, timezone
 from urllib.parse import urlparse, urlunparse
@@ -43,3 +44,12 @@ def open_stream(url, open_command):
     browser = webbrowser.get().basename
     formatted = open_command.format(url=url, browser=browser).split()
     subprocess.Popen(formatted)
+
+
+def coro_exception_handler(fut):
+    try:
+        exc = fut.exception()
+        if exc is not None:
+            traceback.print_exception(exc)
+    except Exception:
+        pass

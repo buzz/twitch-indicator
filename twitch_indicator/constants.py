@@ -13,6 +13,7 @@ TWITCH_AUTH_REDIRECT_URI = "http://localhost:17563"
 TWITCH_AUTH_SCOPES = ["user:read:follows"]
 TWITCH_CLIENT_ID = "vrulzk2tm1ozo2c1iv5a14m1ohbill"
 TWITCH_PAGE_SIZE = 100
+TWITCH_MAX_SUBSCRIPTIONS = 10
 DEFAULT_AVATAR = (
     "http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png"
 )

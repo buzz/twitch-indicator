@@ -7,7 +7,11 @@ from gi.repository import GLib
 
 from twitch_indicator.api.exceptions import RateLimitExceededException
 from twitch_indicator.api.twitch_api import TwitchApi
-from twitch_indicator.constants import TWITCH_WS_KEEPALIVE_TIMEOUT, TWITCH_WS_URL
+from twitch_indicator.constants import (
+    TWITCH_MAX_SUBSCRIPTIONS,
+    TWITCH_WS_KEEPALIVE_TIMEOUT,
+    TWITCH_WS_URL,
+)
 from twitch_indicator.util import parse_rfc3339_timestamp
 
 
@@ -109,7 +113,10 @@ class TwitchEventSub:
         # Get enabled channel IDs
         with self._api_manager.app.state.locks["enabled_channel_ids"]:
             items = self._api_manager.app.state.enabled_channel_ids.items()
-            enabled_channel_ids = [user_id for user_id, val in items if val]
+            realtime_channel_ids = [user_id for user_id, mode in items if mode == "2"]
+
+        if realtime_channel_ids > TWITCH_MAX_SUBSCRIPTIONS:
+            realtime_channel_ids = realtime_channel_ids[:TWITCH_MAX_SUBSCRIPTIONS]
 
         # Get current live streams
         with self._api_manager.app.state.locks["live_streams"]:
@@ -117,7 +124,7 @@ class TwitchEventSub:
                 s["user_id"] for s in self._api_manager.app.state.live_streams
             ]
 
-        for user_id in enabled_channel_ids:
+        for user_id in realtime_channel_ids:
             sub_type = (
                 "stream.offline" if user_id in live_channel_ids else "stream.online"
             )

@@ -2,6 +2,8 @@ import asyncio
 import inspect
 import threading
 
+from twitch_indicator.util import coro_exception_handler
+
 
 class State:
     locks = {
@@ -13,11 +15,13 @@ class State:
 
     def __init__(self, app):
         self._app = app
-        self.handlers = {}
+        self._handlers = {}
 
         self.user_info = None
         self.followed_channels = []
         self.live_streams = []
+
+        # Enabled channels (1=enabled, 2=realtime)
         self.enabled_channel_ids = self._app.settings.get_enabled_channel_ids()
 
     def set_user_info(self, user_info):
@@ -56,23 +60,23 @@ class State:
 
     def add_handler(self, event, handler):
         """Register event handler."""
-        if event in self.handlers:
-            self.handlers[event].append(handler)
+        if event in self._handlers:
+            self._handlers[event].append(handler)
         else:
-            self.handlers[event] = [handler]
+            self._handlers[event] = [handler]
 
     def remove_handler(self, event, handler):
         """Unregister event handler."""
-        if event in self.handlers and handler in self.handlers[event]:
-            self.handlers[event].remove(handler)
+        if event in self._handlers and handler in self._handlers[event]:
+            self._handlers[event].remove(handler)
 
     def _trigger_event(self, event, *args, **kwargs):
-        if event in self.handlers:
-            for handler in self.handlers[event]:
+        if event in self._handlers:
+            for handler in self._handlers[event]:
                 if inspect.iscoroutinefunction(handler):
                     coro = handler(*args, **kwargs)
                     fut = asyncio.run_coroutine_threadsafe(coro, self.api_manager.loop)
-                    fut.add_done_callback(self._event_handler_exception_handler)
+                    fut.add_done_callback(coro_exception_handler)
                 else:
                     handler(*args, **kwargs)
 
@@ -80,13 +84,3 @@ class State:
         with self.locks[name]:
             setattr(self, name, val)
         self._trigger_event(name, val)
-
-    def _event_handler_exception_handler(self, fut):
-        try:
-            exc = fut.exception()
-            if exc is not None:
-                self._logger.exception(
-                    "_trigger_event(): Exception raised", exc_info=exc
-                )
-        except Exception:
-            pass

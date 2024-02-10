@@ -16,9 +16,12 @@ class Settings:
         """Get and parse enabled channel IDs from settings."""
         enabled_str = self.get_string("enabled-channel-ids")
         enabled_channel_ids = {}
-        for channel in enabled_str.split(","):
-            channel_id, onoff = channel.split(":")
-            enabled_channel_ids[channel_id] = onoff == "1"
+        try:
+            for channel in enabled_str.split(","):
+                channel_id, mode = channel.split(":")
+                enabled_channel_ids[channel_id] = mode
+        except ValueError:
+            pass
         return enabled_channel_ids
 
     def get_boolean(self, *args, **kwargs):
@@ -48,9 +51,8 @@ class Settings:
         """Store serialized enabled channel IDs to settings."""
         enabled_list = []
         with self._app.state.locks["enabled_channel_ids"]:
-            for channel_id, enabled in enabled_channel_ids.items():
-                onoff = "1" if enabled else "0"
-                enabled_list.append(f"{channel_id}:{onoff}")
+            for channel_id, mode in enabled_channel_ids.items():
+                enabled_list.append(f"{channel_id}:{mode}")
             val = ",".join(enabled_list)
 
         self.set_string("enabled-channel-ids", val)
