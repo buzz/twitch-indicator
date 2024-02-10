@@ -6,6 +6,8 @@ VERSION = "1.6"
 
 TWITCH_WEB_URL = "https://www.twitch.tv/"
 TWITCH_API_URL = "https://api.twitch.tv/helix/"
+TWITCH_WS_URL = "wss://eventsub.wss.twitch.tv/ws"
+TWITCH_WS_KEEPALIVE_TIMEOUT = 30
 TWITCH_AUTH_URL = "https://id.twitch.tv/oauth2/"
 TWITCH_AUTH_REDIRECT_URI = "http://localhost:17563"
 TWITCH_AUTH_SCOPES = ["user:read:follows"]
@@ -24,3 +26,9 @@ CACHE_DIR = os.path.join(
     os.getenv("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "twitch-indicator"
 )
 AUTH_TOKEN_PATH = os.path.join(CONFIG_DIR, "authtoken")
+
+if os.environ.get("TWITCH_MOCK_API") == "true":
+    TWITCH_API_URL = os.environ.get("TWITCH_API_URL")
+    TWITCH_WS_URL = os.environ.get("TWITCH_WS_URL")
+    TWITCH_AUTH_URL = os.environ.get("TWITCH_AUTH_URL")
+    TWITCH_CLIENT_ID = os.environ.get("TWITCH_CLIENT_ID")

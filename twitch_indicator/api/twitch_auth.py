@@ -54,19 +54,15 @@ class Auth:
         site = web.TCPSite(runner, redirect_uri_parts.hostname, redirect_uri_parts.port)
         await site.start()
         self._logger.info("acquire_token(): Started OAuth webserver")
-        try:
-            # Open Twich auth URL
-            # TODO: consolidate with other webbrowser logic
-            webbrowser.open_new_tab(auth_url)
-            await self._token_acquired_event.wait()
-            self._token_acquired_event = None
-            self._state = None
-            await runner.shutdown()
-            await runner.cleanup()
-            self._logger.info("acquire_token(): Stopped OAuth webserver")
-            auth_event.set()
-        except asyncio.CancelledError:
-            pass
+        # Open Twich auth URL
+        webbrowser.open_new_tab(auth_url)
+        await self._token_acquired_event.wait()
+        self._token_acquired_event = None
+        self._state = None
+        await runner.shutdown()
+        await runner.cleanup()
+        self._logger.info("acquire_token(): Stopped OAuth webserver")
+        auth_event.set()
 
     async def _handle_request(self, request):
         self._logger.debug("_handle_request()")
@@ -103,6 +99,7 @@ class Auth:
 
     async def restore_token(self):
         """Restore auth token from config dir."""
+
         if await path.isfile(AUTH_TOKEN_PATH):
             async with aiofiles.open(AUTH_TOKEN_PATH, "r", encoding="UTF-8") as f:
                 self.token = await f.read()

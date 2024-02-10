@@ -53,7 +53,10 @@ class SettingsDialog:
         self._btn_channel_chooser.connect(
             "clicked", self._on_btn_channel_chooser_clicked
         )
-        if self._gui_manager.app.followed_channels:
+
+        with self._gui_manager.app.state.locks["followed_channels"]:
+            has_followers = bool(self._gui_manager.app.state.followed_channels)
+        if has_followers:
             self._btn_channel_chooser.set_label("Choose channels")
             self._btn_channel_chooser.set_sensitive(True)
 
@@ -75,11 +78,7 @@ class SettingsDialog:
             val = builder.get_object("refresh_interval").get_value_as_int()
             settings.set_int("refresh-interval", val)
 
-        try:
-            self._dialog.destroy()
-        except AttributeError:
-            pass
-        self._dialog = None
+        self.destroy()
 
     def destroy(self):
         """Destroy dialog window."""
@@ -101,7 +100,11 @@ class SettingsDialog:
 
     def _on_btn_channel_chooser_clicked(self, _):
         """Callback for channel chooser menu item."""
-        self._gui_manager.show_channel_chooser()
+        self._dialog.set_sensitive(False)
+        try:
+            self._gui_manager.show_channel_chooser()
+        finally:
+            self._dialog.set_sensitive(True)
 
     def _on_btn_revert_open_commed_clicked(self, _):
         """Revert open command to default."""

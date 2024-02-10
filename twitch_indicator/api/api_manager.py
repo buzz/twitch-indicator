@@ -7,36 +7,42 @@ from gi.repository import GLib
 
 from twitch_indicator.api.twitch_api import TwitchApi
 from twitch_indicator.api.twitch_auth import Auth
+from twitch_indicator.api.twitch_event_sub import TwitchEventSub
 
 
 class ApiManager:
     def __init__(self, app):
         self._logger = logging.getLogger(__name__)
-        self.user_info = None
         self.app = app
         self.loop = None
         self._thread = None
 
         self.auth = Auth()
         self.api = TwitchApi(self)
+        self.event_sub = TwitchEventSub(self)
 
     def run(self):
         """Start asyncio event loop."""
         self.loop = asyncio.new_event_loop()
         self._thread = Thread(target=self.loop.run_forever)
         self._thread.start()
-        asyncio.run_coroutine_threadsafe(self._start(), self.loop)
+        fut = asyncio.run_coroutine_threadsafe(self._start(), self.loop)
+        fut.add_done_callback(self._start_done)
 
     def quit(self):
         """Shut down manager."""
+        self._logger.debug("quit()")
+
         # Stop API thread event loop
+        fut = asyncio.run_coroutine_threadsafe(self._stop(), self.loop)
         try:
-            fut = asyncio.run_coroutine_threadsafe(self._stop(), self.loop)
             fut.result(timeout=5)
         except TimeoutError:
             self._logger.warn("quit(): Not all pending tasks were stopped")
+        except Exception as exc:
+            self._logger.exception("quit(): Exception raised", exc_info=exc)
         self.loop.call_soon_threadsafe(self.loop.stop)
-        sleep(0.5)
+        sleep(0.1)
         self.loop.call_soon_threadsafe(self.loop.close)
         self._logger.debug("quit(): API thread event loop closed")
 
@@ -48,49 +54,51 @@ class ApiManager:
 
     async def acquire_token(self, auth_event):
         """Acquire auth token."""
-        try:
-            await self.auth.acquire_token(auth_event)
-        except Exception as e:
-            self._logger.exception(e)
-        finally:
-            self._logger.debug("acquire_token(): task done")
+        await self.auth.acquire_token(auth_event)
 
     async def _start(self):
         """API thread main coroutine."""
+        self._logger.debug("_start()")
+
+        # Restore token
+        await self.auth.restore_token()
+
+        # Validate token
+        user_info = await self.api.validate()
+        self._logger.debug(f"run(): Validated: {user_info}")
+        GLib.idle_add(self.app.state.set_user_info, user_info)
+
+        # Get followed channels
+        followed_channels = await self.api.fetch_followed_channels(user_info["user_id"])
+        self._logger.debug("run(): Got followed channels")
+        GLib.idle_add(self.app.state.set_followed_channels, followed_channels)
+
+        # Get followed live streams
+        live_streams = await self.api.fetch_followed_streams(user_info["user_id"])
+        self._logger.debug(f"run(): Got live streams ({len(live_streams)})")
+        GLib.idle_add(self.app.state.set_live_streams, live_streams)
+
+        # Ensure current profile pictures
+        await self.api.fetch_profile_pictures((s["user_id"] for s in live_streams))
+
+        # Start listening to streams
+        await self.event_sub.start_listening()
+
+    def _start_done(self, fut):
+        """Handle exception."""
         try:
-            self._logger.debug("run()")
-
-            # Restore token
-            await self.auth.restore_token()
-
-            # Validate token
-            self.user_info = await self.api.validate()
-            self._logger.debug(f"run(): Validated: {self.user_info}")
-            GLib.idle_add(self.app.update_user_info, self.user_info)
-
-            # Get followed channels
-            followed_channels = await self.api.fetch_followed_channels(
-                self.user_info["user_id"]
-            )
-            self._logger.debug("run(): Got followed channels")
-            GLib.idle_add(self.app.update_followed_channels, followed_channels)
-
-            # Get live streams
-            live_streams = await self.api.fetch_live_streams(self.user_info["user_id"])
-            self._logger.debug(f"run(): Got live streams ({len(live_streams)})")
-            GLib.idle_add(self.app.gui_manager.indicator.add_streams_menu, live_streams)
-
-            # Ensure current profile pictures
-            await self.api.fetch_profile_pictures(live_streams)
-
-        except Exception as e:
-            self._logger.exception(e)
-        finally:
-            self._logger.debug("run(): task done")
+            exc = fut.exception()
+            if exc is not None:
+                self._logger.exception("_start(): Exception raised", exc_info=exc)
+        except Exception:
+            pass
 
     async def _stop(self):
         """Stop pending tasks and thread."""
-        self._logger.debug("stop()")
+        self._logger.debug("_stop()")
         tasks = [t for t in asyncio.all_tasks() if t != asyncio.current_task()]
         [task.cancel() for task in tasks]
         await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def update_enabled_channel_ids(self, enabled_channel_ids):
+        self._enabled_channel_ids = enabled_channel_ids

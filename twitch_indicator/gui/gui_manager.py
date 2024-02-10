@@ -15,7 +15,7 @@ class GuiManager:
         self.channel_chooser_dialog = ChannelChooserDialog(self)
         self.indicator = Indicator(self)
         self.notifications = Notifications(self)
-        self.auth_dialog = AuthDialog()
+        self.auth_dialog = AuthDialog(self)
 
         self._setup_css_provider()
 

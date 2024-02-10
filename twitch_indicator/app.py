@@ -2,13 +2,13 @@ import asyncio
 import logging
 import os
 
-from gi.repository import Gio
-
 from twitch_indicator.api.api_manager import ApiManager
-from twitch_indicator.constants import CACHE_DIR, CONFIG_DIR, SETTINGS_KEY
+from twitch_indicator.constants import CACHE_DIR, CONFIG_DIR
 from twitch_indicator.gui.gui_manager import GuiManager
+from twitch_indicator.settings import Settings
+from twitch_indicator.state import State
 
-debug = os.environ.get("DEBUG", "0") == "1"
+debug = os.environ.get("TWITCH_INDICATOR_DEBUG", "false") == "true"
 logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
 
 
@@ -19,11 +19,9 @@ class TwitchIndicatorApp:
         self._logger = logging.getLogger(__name__)
         self.ensure_dirs()
 
-        self.followed_channels = []
-        self.live_streams = []
-        self.user_info = None
-
-        self.settings = Gio.Settings.new(SETTINGS_KEY)
+        self.settings = Settings(self)
+        self.state = State(self)
+        self.settings.setup_event_handler()
         self.gui_manager = GuiManager(self)
         self.api_manager = ApiManager(self)
 
@@ -43,21 +41,20 @@ class TwitchIndicatorApp:
 
     def not_authorized(self, auth_event):
         """Show authentication dialog."""
-        self.user_info = None
+        self.state.set_user_info(None)
+        self.state.set_followed_channels([])
+        self.state.set_live_streams([])
         self.gui_manager.show_auth_dialog(auth_event)
 
     def start_auth(self, auth_event):
         """Start auth flow."""
         coro = self.api_manager.acquire_token(auth_event)
-        asyncio.run_coroutine_threadsafe(coro, self.api_manager.loop)
-
-    def update_user_info(self, user_info):
-        """Update user info."""
-        self.user_info = user_info
-
-    def update_followed_channels(self, followed_channels):
-        """Update followed channels."""
-        self.followed_channels = followed_channels
+        fut = asyncio.run_coroutine_threadsafe(coro, self.api_manager.loop)
+        try:
+            fut.result()
+        except Exception as exc:
+            self._logger.exception("start_auth(): Exception raised", exc_info=exc)
+            self.quit()
 
     @staticmethod
     def ensure_dirs():

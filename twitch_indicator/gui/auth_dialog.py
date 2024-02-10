@@ -4,7 +4,8 @@ from twitch_indicator.util import get_data_filepath
 
 
 class AuthDialog:
-    def __init__(self):
+    def __init__(self, gui_manager):
+        self._gui_manager = gui_manager
         self._dialog = None
 
     def show(self, auth_event):
@@ -23,9 +24,9 @@ class AuthDialog:
         response = self._dialog.run()
         try:
             if response == Gtk.ResponseType.OK:
-                self.app.start_auth(auth_event)
+                self._gui_manager.app.start_auth(auth_event)
             else:
-                GLib.idle_add(self.quit)
+                GLib.idle_add(self._gui_manager.app.quit)
         finally:
             self._dialog.destroy()
             self._dialog = None
