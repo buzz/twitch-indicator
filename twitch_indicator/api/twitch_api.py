@@ -36,7 +36,7 @@ class TwitchApi:
         self._logger.debug("validate()")
 
         url = build_api_url("validate", url=TWITCH_AUTH_URL)
-        resp = await self.get_api_response(url)
+        resp = await self._get_api_response(url)
 
         return resp
 
@@ -48,34 +48,9 @@ class TwitchApi:
         """
         self._logger.debug("fetch_followed_channels()")
 
-        loc = "channels/followed"
-        url = build_api_url(loc, {"user_id": user_id, "first": TWITCH_PAGE_SIZE})
-        resp = await self.get_api_response(url)
-
-        total = int(resp["total"])
-        fetched = len(resp["data"])
-        data = resp["data"]
-
-        if total == 0:
-            return []
-
-        last = resp
-        while fetched < total:
-            url = build_api_url(
-                loc,
-                {
-                    "after": last["pagination"]["cursor"],
-                    "user_id": user_id,
-                    "first": TWITCH_PAGE_SIZE,
-                },
-            )
-            nxt = await self.get_api_response(url)
-
-            fetched += len(nxt["data"])
-            data += nxt["data"]
-            last = nxt
-
-        return data
+        return await self._get_paginated_api_response(
+            "channels/followed", {"user_id": user_id}
+        )
 
     async def fetch_followed_streams(self, user_id):
         """
@@ -85,49 +60,9 @@ class TwitchApi:
         """
         self._logger.debug("fetch_followed_streams()")
 
-        loc = "streams/followed"
-        url = build_api_url(loc, {"user_id": user_id, "first": TWITCH_PAGE_SIZE})
-        resp = await self.get_api_response(url)
-
-        fetched = len(resp["data"])
-        data = resp["data"]
-
-        if fetched == 0:
-            return []
-
-        last = resp
-        while fetched == TWITCH_PAGE_SIZE:
-            params = {
-                "after": last["pagination"]["cursor"],
-                "user_id": user_id,
-                "first": TWITCH_PAGE_SIZE,
-            }
-            url = build_api_url(loc, params)
-            nxt = await self.get_api_response(url)
-
-            fetched = len(nxt["data"])
-            data += nxt["data"]
-            last = nxt
-
-        return data
-
-    async def fetch_streams(self, user_ids):
-        """
-        Fetch live streams of user_ids and return as list of dictionaries.
-
-        https://dev.twitch.tv/docs/api/reference/#get-streams
-        """
-        self._logger.debug("fetch_streams()")
-
-        if len(user_ids) > TWITCH_PAGE_SIZE:
-            msg = f"user_ids may only contain up to {TWITCH_PAGE_SIZE} entries"
-            raise ValueError(msg)
-
-        params = [("user_id", user_id) for user_id in user_ids]
-        params.append(("first", TWITCH_PAGE_SIZE))
-        url = build_api_url("streams", params)
-        resp = await self.get_api_response(url)
-        return resp["data"]
+        return await self._get_paginated_api_response(
+            "streams/followed", {"user_id": user_id}
+        )
 
     async def fetch_profile_pictures(self, all_user_ids):
         """
@@ -159,7 +94,7 @@ class TwitchApi:
 
             params = [("id", user_id) for user_id in curr_user_ids]
             url = build_api_url("users", params)
-            resp = await self.get_api_response(url)
+            resp = await self._get_api_response(url)
 
             for d in resp["data"]:
                 profile_urls[d["id"]] = d["profile_image_url"]
@@ -183,7 +118,29 @@ class TwitchApi:
                                 f"fetch_profile_pictures(): Saved {filename}"
                             )
 
-    async def get_api_response(self, url, method="GET", json=None):
+    async def _get_paginated_api_response(self, path, params_orig):
+        """Perform a series of requests for a paginated endpoint."""
+        data = []
+        cursor = None
+        params = {**params_orig, "first": TWITCH_PAGE_SIZE}
+
+        while True:
+            if cursor is not None:
+                params["after"] = cursor
+
+            url = build_api_url(path, params)
+            resp = await self._get_api_response(url)
+            data += resp["data"]
+
+            try:
+                cursor = resp["pagination"]["cursor"]
+            except KeyError:
+                cursor = None
+
+            if cursor is None:
+                return data
+
+    async def _get_api_response(self, url, method="GET", json=None):
         """Perform API request."""
         attempts = 3
         attempt = 0
