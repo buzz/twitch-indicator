@@ -4,7 +4,7 @@ from gi.repository import GLib, Notify
 
 from twitch_indicator.constants import APP_NAME
 from twitch_indicator.gui.cached_profile_image import CachedProfileImage
-from twitch_indicator.util import build_stream_url, format_viewer_count, open_stream
+from twitch_indicator.utils import build_stream_url, format_viewer_count, open_stream
 
 
 class Notifications:

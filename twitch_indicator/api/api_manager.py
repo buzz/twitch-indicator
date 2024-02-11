@@ -8,7 +8,7 @@ from gi.repository import GLib
 from twitch_indicator.api.twitch_api import TwitchApi
 from twitch_indicator.api.twitch_auth import Auth
 from twitch_indicator.constants import REFRESH_INTERVAL_LIMITS
-from twitch_indicator.util import coro_exception_handler
+from twitch_indicator.utils import coro_exception_handler
 
 
 class ApiManager:

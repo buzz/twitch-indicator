@@ -17,7 +17,7 @@ from twitch_indicator.constants import (
     TWITCH_CLIENT_ID,
     UNICODE_ASCII_CHARACTER_SET,
 )
-from twitch_indicator.util import get_data_filepath
+from twitch_indicator.utils import get_data_filepath
 
 
 class Auth:

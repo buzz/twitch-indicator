@@ -1,7 +1,7 @@
 from gi.repository import AppIndicator3, GdkPixbuf, GLib, Gtk
 
 from twitch_indicator.gui.cached_profile_image import CachedProfileImage
-from twitch_indicator.util import (
+from twitch_indicator.utils import (
     build_stream_url,
     format_viewer_count,
     get_data_filepath,

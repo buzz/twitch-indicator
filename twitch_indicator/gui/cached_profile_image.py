@@ -1,7 +1,7 @@
 from gi.repository import GdkPixbuf, GLib
 
 from twitch_indicator.constants import FALLBACK_PROFILE_IMAGE_FILENAME
-from twitch_indicator.util import get_cached_image_filename, get_data_filepath
+from twitch_indicator.utils import get_cached_image_filename, get_data_filepath
 
 
 class CachedProfileImage(GdkPixbuf.Pixbuf):

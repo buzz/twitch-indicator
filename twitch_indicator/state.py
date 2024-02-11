@@ -2,7 +2,7 @@ import asyncio
 import inspect
 import threading
 
-from twitch_indicator.util import coro_exception_handler
+from twitch_indicator.utils import coro_exception_handler
 
 
 class State:

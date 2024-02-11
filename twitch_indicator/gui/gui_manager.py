@@ -5,7 +5,7 @@ from twitch_indicator.gui.dialogs.channel_chooser_dialog import ChannelChooserDi
 from twitch_indicator.gui.dialogs.settings_dialog import SettingsDialog
 from twitch_indicator.gui.indicator import Indicator
 from twitch_indicator.gui.notifications import Notifications
-from twitch_indicator.util import get_data_filepath
+from twitch_indicator.utils import get_data_filepath
 
 
 class GuiManager:

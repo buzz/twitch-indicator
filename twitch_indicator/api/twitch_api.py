@@ -19,7 +19,7 @@ from twitch_indicator.constants import (
     TWITCH_CLIENT_ID,
     TWITCH_PAGE_SIZE,
 )
-from twitch_indicator.util import get_cached_image_filename
+from twitch_indicator.utils import get_cached_image_filename
 
 
 class TwitchApi:

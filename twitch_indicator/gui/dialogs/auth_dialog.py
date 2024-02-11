@@ -1,6 +1,6 @@
 from gi.repository import GLib, Gtk
 
-from twitch_indicator.util import get_data_filepath
+from twitch_indicator.utils import get_data_filepath
 
 
 class AuthDialog:
