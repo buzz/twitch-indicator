@@ -24,6 +24,7 @@ CACHE_DIR = os.path.join(
     os.getenv("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "twitch-indicator"
 )
 AUTH_TOKEN_PATH = os.path.join(CONFIG_DIR, "authtoken")
+FALLBACK_PROFILE_IMAGE_FILENAME = "fallback_profile_image.png"
 
 if os.environ.get("TWITCH_MOCK_API") == "true":
     TWITCH_API_URL = os.environ.get("TWITCH_API_URL")

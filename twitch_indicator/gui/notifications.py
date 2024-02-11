@@ -79,13 +79,7 @@ class Notifications:
                     viewer_count = format_viewer_count(stream["viewer_count"])
                     descr += f"\nViewers: <b>{viewer_count}</b>"
 
-            try:
-                pixbuf = CachedProfileImage.new_from_cached(stream["user_id"])
-            except GLib.Error:
-                self._logger.warn(
-                    f"_stream_notification(): No profile image for {stream['user_id']}"
-                )
-                pixbuf = None
+            pixbuf = CachedProfileImage.new_from_cached(stream["user_id"])
 
             action = (
                 "watch",
