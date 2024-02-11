@@ -1,16 +1,13 @@
-from gi.repository import AppIndicator3, GdkPixbuf, GLib, Gtk
+from gi.repository import AppIndicator3, GdkPixbuf, Gio, GLib, Gtk
 
 from twitch_indicator.gui.cached_profile_image import CachedProfileImage
-from twitch_indicator.utils import (
-    build_stream_url,
-    format_viewer_count,
-    get_data_filepath,
-    open_stream,
-)
+from twitch_indicator.utils import format_viewer_count, get_data_filepath
 
 
 class Indicator:
     """App indicator."""
+
+    MSG_NO_LIVE_STREAMS = "No live streams..."
 
     def __init__(self, gui_manager):
         self._gui_manager = gui_manager
@@ -20,87 +17,112 @@ class Indicator:
             AppIndicator3.IndicatorCategory.APPLICATION_STATUS,
         )
         self._app_indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+
+        self._menu_streams = None
+        self._menu_item_streams = None
         self._setup_menu()
+        self._setup_events()
+
+    def _setup_events(self):
         self._gui_manager.app.state.add_handler(
-            "live_streams", self._update_streams_menu
+            "live_streams", lambda _: self._update_streams_menu()
+        )
+        self._gui_manager.app.settings.settings.connect(
+            "changed::show-selected-channels-on-top",
+            lambda *_: self._update_streams_menu(),
         )
 
     def _setup_menu(self):
         """Setup menu."""
-        self.menu = Gtk.Menu()
 
-        self.menu_item_channels = Gtk.MenuItem(label="Live channels")
-        self.menu_item_channels.set_sensitive(False)
+        # Root menu
+        menu = Gtk.Menu()
+        menu.insert_action_group("menu", self._gui_manager.app.actions.action_group)
 
-        self.menu_item_settings = Gtk.MenuItem(label="Settings")
-        self.menu_item_settings.connect("activate", self._on_settings)
+        # Streams menu
+        self._menu_streams = Gtk.Menu()
+        self._menu_item_streams = Gtk.MenuItem.new_with_label(
+            Indicator.MSG_NO_LIVE_STREAMS
+        )
+        self._menu_item_streams.set_sensitive(False)
+        self._menu_item_streams.set_submenu(self._menu_streams)
+        menu.append(self._menu_item_streams)
 
-        self.menu_item_quit = Gtk.MenuItem(label="Quit")
-        self.menu_item_quit.connect("activate", self._on_quit)
+        menu.append(Gtk.SeparatorMenuItem.new())
 
-        self._app_indicator.set_menu(self.menu)
-        self._refresh_menu_items()
+        # Actions menu (settings, quit)
+        menu_item_settings = Gtk.MenuItem.new_with_label("Settings")
+        menu_item_quit = Gtk.MenuItem.new_with_label("Quit")
 
-    def _update_streams_menu(self, live_streams):
+        menu_item_settings.set_action_name("menu.settings")
+        menu_item_quit.set_action_name("menu.quit")
+
+        menu.append(menu_item_settings)
+        menu.append(menu_item_quit)
+
+        menu.show_all()
+        self._app_indicator.set_menu(menu)
+
+    def _update_streams_menu(self):
         """Update stream list."""
         settings = self._gui_manager.app.settings
-
-        streams_menu = Gtk.Menu()
-        self.menu_item_channels.set_submenu(streams_menu)
+        menu = self._menu_streams
 
         # Order streams by viewer count
         with self._gui_manager.app.state.locks["live_streams"]:
-            streams_ordered = sorted(live_streams, key=lambda k: -k["viewer_count"])
+            streams = sorted(
+                self._gui_manager.app.state.live_streams,
+                key=lambda k: -k["viewer_count"],
+            )
 
-        if streams_ordered:
-            self.menu_item_channels.set_label(f"Live channels ({len(streams_ordered)})")
-            self.menu_item_channels.set_sensitive(True)
+        # No live streams?
+        if not streams:
+            self._menu_item_streams.set_label(Indicator.MSG_NO_LIVE_STREAMS)
+            self._menu_item_streams.set_sensitive(False)
+            return
 
-            # Selected channels to top
-            if settings.get_boolean("show-selected-channels-on-top"):
-                enabled_channels = []
-                other_channels = []
+        # Clear menu
+        for item in menu.get_children():
+            menu.remove(item)
 
-                with self._gui_manager.app.state.locks["enabled_channel_ids"]:
-                    state = self._gui_manager.app.state
-                    enabled_channel_ids = state.enabled_channel_ids
-                    for stream in streams_ordered:
-                        try:
-                            if enabled_channel_ids[stream["user_id"]]:
-                                enabled_channels.append(stream)
-                            else:
-                                other_channels.append(stream)
-                        except KeyError:
-                            other_channels.append(stream)
+        # Selected streams to top
+        if settings.get_boolean("show-selected-channels-on-top"):
+            with self._gui_manager.app.state.locks["enabled_channel_ids"]:
+                ec_ids = self._gui_manager.app.state.enabled_channel_ids.items()
+                top_ids = [uid for uid, en in ec_ids if en == "1"]
 
-                self._create_channel_menu_items(
-                    enabled_channels, streams_menu, settings
-                )
-                streams_menu.append(Gtk.SeparatorMenuItem())
-                self._create_channel_menu_items(other_channels, streams_menu, settings)
+            top_streams = [s for s in streams if s["user_id"] in top_ids]
+            self._create_stream_menu_item(menu, top_streams, settings)
 
-            else:
-                self._create_channel_menu_items(streams_ordered, streams_menu, settings)
+            menu.append(Gtk.SeparatorMenuItem.new())
 
+            bottom_streams = [s for s in streams if s["user_id"] not in top_ids]
+            self._create_stream_menu_item(menu, bottom_streams, settings)
         else:
-            # No live channels
-            self.menu_item_channels.set_label("No live channels...")
-            self.menu_item_channels.set_sensitive(False)
+            self._create_stream_menu_item(menu, streams, settings)
 
-        self._refresh_menu_items()
+        # Enable streams menu items
+        self._menu_item_streams.set_label(f"Live streams ({len(streams)})")
+        self._menu_item_streams.set_sensitive(True)
 
-    def _create_channel_menu_items(self, streams, streams_menu, settings):
-        """Create menu items from streams array."""
+        menu.show_all()
+
+    @staticmethod
+    def _create_stream_menu_item(menu, streams, settings):
+        """Create menu item for stream."""
+
         for stream in streams:
-            menu_entry = Gtk.ImageMenuItem()
+            menu_item = Gtk.ImageMenuItem()
+            menu_item.set_detailed_action_name(
+                f"menu.open-stream::{stream['user_login']}"
+            )
 
-            # Channel icon
+            # User profile image icon
             pixbuf = CachedProfileImage.new_from_cached(stream["user_id"])
             pixbuf.scale_simple(32, 32, GdkPixbuf.InterpType.BILINEAR)
-            icon = Gtk.Image.new_from_pixbuf(pixbuf)
-            menu_entry.set_image(icon)
+            menu_item.set_image(Gtk.Image.new_from_pixbuf(pixbuf))
 
-            # Channel label
+            # Label
             label = Gtk.Label()
             markup = f"<b>{GLib.markup_escape_text(stream['user_name'])}</b>"
             if settings.get_boolean("show-game-playing") and stream["game_name"]:
@@ -108,36 +130,8 @@ class Indicator:
             if settings.get_boolean("show-viewer-count"):
                 viewer_count = format_viewer_count(stream["viewer_count"])
                 markup += f" (<small>{viewer_count}</small>)"
-
             label.set_markup(markup)
             label.set_halign(Gtk.Align.START)
-            menu_entry.add(label)
-            url = build_stream_url(stream["user_login"])
-            menu_entry.connect("activate", self._on_stream_menu, url)
+            menu_item.add(label)
 
-            streams_menu.append(menu_entry)
-
-    def _refresh_menu_items(self):
-        """Refresh all menu by removing and re-adding menu items."""
-        for menu_item in self.menu.get_children():
-            self.menu.remove(menu_item)
-        self.menu.append(self.menu_item_channels)
-        self.menu.append(Gtk.SeparatorMenuItem())
-        self.menu.append(self.menu_item_settings)
-        self.menu.append(self.menu_item_quit)
-        self.menu.show_all()
-
-    # UI callbacks
-
-    def _on_quit(self, _):
-        """Callback for quit menu item."""
-        self._gui_manager.app.quit()
-
-    def _on_settings(self, _):
-        """Callback for settings menu item."""
-        self._gui_manager.show_settings()
-
-    def _on_stream_menu(self, _, url):
-        """Callback for stream menu item."""
-        open_cmd = self._gui_manager.app.settings.get_string("open-command")
-        open_stream(url, open_cmd)
+            menu.append(menu_item)

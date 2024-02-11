@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 
+from twitch_indicator.actions import Actions
 from twitch_indicator.api.api_manager import ApiManager
 from twitch_indicator.constants import CACHE_DIR, CONFIG_DIR
 from twitch_indicator.gui.gui_manager import GuiManager
@@ -19,6 +20,7 @@ class TwitchIndicatorApp:
         self._logger = logging.getLogger(__name__)
         self.ensure_dirs()
 
+        self.actions = Actions(self)
         self.settings = Settings(self)
         self.state = State(self)
         self.settings.setup_event_handler()

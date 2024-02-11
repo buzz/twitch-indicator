@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from gi.repository import Gio
@@ -11,7 +10,7 @@ class Settings:
         super().__init__(*args, **kwargs)
         self._app = app
         self._logger = logging.getLogger(__name__)
-        self._settings = Gio.Settings.new(SETTINGS_KEY)
+        self.settings = Gio.Settings.new(SETTINGS_KEY)
 
     def get_enabled_channel_ids(self):
         """Get and parse enabled channel IDs from settings."""
@@ -26,37 +25,37 @@ class Settings:
         return enabled_channel_ids
 
     def get_boolean(self, *args, **kwargs):
-        return self._settings.get_boolean(*args, **kwargs)
+        return self.settings.get_boolean(*args, **kwargs)
 
     def set_boolean(self, *args, **kwargs):
-        return self._settings.set_boolean(*args, **kwargs)
+        return self.settings.set_boolean(*args, **kwargs)
 
     def get_double(self, *args, **kwargs):
-        return self._settings.get_double(*args, **kwargs)
+        return self.settings.get_double(*args, **kwargs)
 
     def set_double(self, *args, **kwargs):
-        return self._settings.set_double(*args, **kwargs)
+        return self.settings.set_double(*args, **kwargs)
 
     def get_int(self, *args, **kwargs):
-        return self._settings.get_int(*args, **kwargs)
+        return self.settings.get_int(*args, **kwargs)
 
     def set_int(self, *args, **kwargs):
-        return self._settings.set_int(*args, **kwargs)
+        return self.settings.set_int(*args, **kwargs)
 
     def get_string(self, *args, **kwargs):
-        return self._settings.get_string(*args, **kwargs)
+        return self.settings.get_string(*args, **kwargs)
 
     def set_string(self, *args, **kwargs):
-        return self._settings.set_string(*args, **kwargs)
+        return self.settings.set_string(*args, **kwargs)
 
     def get_default_value(self, *args, **kwargs):
-        return self._settings.get_default_value(*args, **kwargs)
+        return self.settings.get_default_value(*args, **kwargs)
 
     def setup_event_handler(self):
         self._app.state.add_handler(
             "enabled_channel_ids", self._set_enabled_channel_ids
         )
-        self._settings.connect(
+        self.settings.connect(
             "changed::refresh-interval", self._on_refresh_interval_changed
         )
 
