@@ -3,7 +3,7 @@ import logging
 import webbrowser
 from os import chmod
 from random import SystemRandom
-from urllib.parse import urlencode, urlparse, urlunparse
+from urllib.parse import urlparse, urlunparse
 
 import aiofiles
 from aiofiles.os import path
@@ -17,7 +17,7 @@ from twitch_indicator.constants import (
     TWITCH_CLIENT_ID,
     UNICODE_ASCII_CHARACTER_SET,
 )
-from twitch_indicator.utils import get_data_filepath
+from twitch_indicator.utils import build_api_url, get_data_filepath
 
 
 class Auth:
@@ -125,9 +125,7 @@ class Auth:
     def _build_auth_url():
         rand = SystemRandom()
         state = "".join(rand.choice(UNICODE_ASCII_CHARACTER_SET) for x in range(30))
-        url_parts = urlparse(TWITCH_AUTH_URL)
-        url_parts = url_parts._replace(path=url_parts.path + "authorize")
-        query = {
+        params = {
             "client_id": TWITCH_CLIENT_ID,
             "force_verify": False,
             "redirect_uri": TWITCH_AUTH_REDIRECT_URI,
@@ -135,4 +133,4 @@ class Auth:
             "scope": " ".join(TWITCH_AUTH_SCOPES),
             "state": state,
         }
-        return urlunparse(url_parts._replace(query=urlencode(query))), state
+        return build_api_url("authorize", params, url=TWITCH_AUTH_URL), state

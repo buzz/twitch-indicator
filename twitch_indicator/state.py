@@ -7,6 +7,7 @@ from twitch_indicator.utils import coro_exception_handler
 
 class State:
     locks = {
+        "first_run": threading.Lock(),
         "user_info": threading.Lock(),
         "followed_channels": threading.Lock(),
         "live_streams": threading.Lock(),
@@ -17,12 +18,16 @@ class State:
         self._app = app
         self._handlers = {}
 
+        self.first_run = True
         self.user_info = None
         self.followed_channels = []
         self.live_streams = []
 
         # Enabled channels
         self.enabled_channel_ids = self._app.settings.get_enabled_channel_ids()
+
+    def set_first_run(self, first_run):
+        self._set_value("first_run", first_run)
 
     def set_user_info(self, user_info):
         self._set_value("user_info", user_info)

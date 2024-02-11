@@ -85,14 +85,16 @@ class ApiManager:
         # Get followed live streams
         live_streams = await self.api.fetch_followed_streams(user_info["user_id"])
         self._logger.debug(f"run(): live streams: {len(live_streams)}")
+        GLib.idle_add(self.app.state.set_live_streams, live_streams)
 
         # Ensure current profile pictures
         await self.api.fetch_profile_pictures(s["user_id"] for s in live_streams)
 
-        GLib.idle_add(self.app.state.set_live_streams, live_streams)
-
         # Start stream polling cycle
         await self._restart_periodic_polling()
+
+        # Allow notifications to happen from this point on
+        GLib.idle_add(self.app.state.set_first_run, False)
 
     async def _stop(self):
         """Stop pending tasks and thread."""

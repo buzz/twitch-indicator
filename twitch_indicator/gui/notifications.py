@@ -24,7 +24,6 @@ class Notifications:
         self._gui_manager = gui_manager
         self._notifications = []
         self._live_stream_user_ids = []
-        self._first_run = True
 
         Notify.init(APP_NAME)
 
@@ -40,10 +39,9 @@ class Notifications:
             self._logger.debug(f"_update_live_streams(): {len(new_streams)} streams")
 
             # Skip first notification run
-            if self._first_run:
-                self._first_run = False
-
-            else:
+            with app.state.locks["first_run"]:
+                first_run = app.state.first_run
+            if not first_run:
                 if app.settings.get_boolean("enable-notifications"):
                     with app.state.locks["enabled_channel_ids"]:
                         enabled_channel_ids = app.state.enabled_channel_ids

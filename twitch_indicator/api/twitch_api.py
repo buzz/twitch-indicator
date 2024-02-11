@@ -2,7 +2,6 @@ import asyncio
 import logging
 import re
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urlencode, urlparse, urlunparse
 
 import aiofiles
 import aiohttp
@@ -14,12 +13,11 @@ from twitch_indicator.api.exceptions import (
     RateLimitExceededException,
 )
 from twitch_indicator.constants import (
-    TWITCH_API_URL,
     TWITCH_AUTH_URL,
     TWITCH_CLIENT_ID,
     TWITCH_PAGE_SIZE,
 )
-from twitch_indicator.utils import get_cached_image_filename
+from twitch_indicator.utils import build_api_url, get_cached_image_filename
 
 
 class TwitchApi:
@@ -37,7 +35,7 @@ class TwitchApi:
         """
         self._logger.debug("validate()")
 
-        url = self.build_url("validate", url=TWITCH_AUTH_URL)
+        url = build_api_url("validate", url=TWITCH_AUTH_URL)
         resp = await self.get_api_response(url)
 
         return resp
@@ -51,7 +49,7 @@ class TwitchApi:
         self._logger.debug("fetch_followed_channels()")
 
         loc = "channels/followed"
-        url = self.build_url(loc, {"user_id": user_id, "first": TWITCH_PAGE_SIZE})
+        url = build_api_url(loc, {"user_id": user_id, "first": TWITCH_PAGE_SIZE})
         resp = await self.get_api_response(url)
 
         total = int(resp["total"])
@@ -63,7 +61,7 @@ class TwitchApi:
 
         last = resp
         while fetched < total:
-            url = self.build_url(
+            url = build_api_url(
                 loc,
                 {
                     "after": last["pagination"]["cursor"],
@@ -88,7 +86,7 @@ class TwitchApi:
         self._logger.debug("fetch_followed_streams()")
 
         loc = "streams/followed"
-        url = self.build_url(loc, {"user_id": user_id, "first": TWITCH_PAGE_SIZE})
+        url = build_api_url(loc, {"user_id": user_id, "first": TWITCH_PAGE_SIZE})
         resp = await self.get_api_response(url)
 
         fetched = len(resp["data"])
@@ -104,7 +102,7 @@ class TwitchApi:
                 "user_id": user_id,
                 "first": TWITCH_PAGE_SIZE,
             }
-            url = self.build_url(loc, params)
+            url = build_api_url(loc, params)
             nxt = await self.get_api_response(url)
 
             fetched = len(nxt["data"])
@@ -127,7 +125,7 @@ class TwitchApi:
 
         params = [("user_id", user_id) for user_id in user_ids]
         params.append(("first", TWITCH_PAGE_SIZE))
-        url = self.build_url("streams", params)
+        url = build_api_url("streams", params)
         resp = await self.get_api_response(url)
         return resp["data"]
 
@@ -160,7 +158,7 @@ class TwitchApi:
             curr_user_ids = user_ids[idx:max]
 
             params = [("id", user_id) for user_id in curr_user_ids]
-            url = self.build_url("users", params)
+            url = build_api_url("users", params)
             resp = await self.get_api_response(url)
 
             for d in resp["data"]:
@@ -189,19 +187,21 @@ class TwitchApi:
         """Perform API request."""
         attempts = 3
         attempt = 0
-        headers = {
-            "Client-Id": TWITCH_CLIENT_ID,
-            "Authorization": f"Bearer {self._api_manager.auth.token}",
-        }
         while attempt < attempts:
             try:
-                async with aiohttp.ClientSession(headers=headers) as session:
+                async with aiohttp.ClientSession() as session:
                     self._logger.debug(
                         f"get_api_response(): Attempt {attempt+1}/{attempts} {method} {url}"
                     )
                     if self._api_manager.auth.token is None:
                         raise NotAuthorizedException
-                    async with session.request(method, url, json=json) as response:
+                    headers = {
+                        "Client-Id": TWITCH_CLIENT_ID,
+                        "Authorization": f"Bearer {self._api_manager.auth.token}",
+                    }
+                    async with session.request(
+                        method, url, json=json, headers=headers
+                    ) as response:
                         if response.status in (200, 202, 204):
                             return await response.json()
                         elif response.status == 401:
@@ -220,12 +220,3 @@ class TwitchApi:
                 await auth_event.wait()
             finally:
                 attempt += 1
-
-    @staticmethod
-    def build_url(path_append, params=None, url=TWITCH_API_URL):
-        """Construct API URL."""
-        url_parts = urlparse(url)
-        url_parts = url_parts._replace(path=url_parts.path + path_append)
-        if params:
-            url_parts = url_parts._replace(query=urlencode(params))
-        return urlunparse(url_parts)
