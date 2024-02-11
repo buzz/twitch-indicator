@@ -15,9 +15,9 @@ def get_data_filepath(path):
     return os.path.join(_ROOT, "data", path)
 
 
-def get_image_filename(user_id):
+def get_cached_image_filename(user_id):
     """Get cached image file name."""
-    return os.path.join(CACHE_DIR, f"{user_id}.png")
+    return os.path.join(CACHE_DIR, user_id)
 
 
 def format_viewer_count(count):

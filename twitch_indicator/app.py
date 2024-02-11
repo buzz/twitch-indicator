@@ -23,7 +23,7 @@ class TwitchIndicatorApp:
         self.state = State(self)
         self.settings.setup_event_handler()
         self.gui_manager = GuiManager(self)
-        self.api_manager = ApiManager(self)
+        self.api_manager = ApiManager(self, self.settings.get_int("refresh-interval"))
 
     def run(self):
         """Start API and GUI manager."""

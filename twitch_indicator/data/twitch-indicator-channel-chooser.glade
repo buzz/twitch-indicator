@@ -28,17 +28,6 @@
           </packing>
         </child>
         <child>
-          <object class="GtkLabel" id="label_realtime">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-          </object>
-          <packing>
-            <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">1</property>
-          </packing>
-        </child>
-        <child>
           <object class="GtkLabel" id="label_enabled">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -171,32 +160,13 @@
       </packing>
     </child>
     <child>
-      <object class="GtkButton" id="btn_refresh">
-        <property name="label">gtk-refresh</property>
-        <property name="visible">True</property>
-        <property name="can-focus">True</property>
-        <property name="receives-default">True</property>
-        <property name="use-stock">True</property>
-      </object>
-      <packing>
-        <property name="expand">False</property>
-        <property name="fill">True</property>
-        <property name="position">4</property>
-      </packing>
-    </child>
-    <child>
       <object class="GtkLabel">
         <property name="visible">True</property>
         <property name="can-focus">False</property>
         <property name="margin-bottom">10</property>
         <property name="xpad">12</property>
         <property name="ypad">8</property>
-        <property name="label" translatable="yes">&lt;b&gt;Enable the channels you want to receive notifications for.&lt;/b&gt;
-
-You can enable push notifications (real-time) for up to 10 streams.
-This is a limit of the Twitch API.
-
-&lt;a href="https://github.com/buzz/twitch-indicator/blob/main/README.md#push-vs-poll"&gt;Read more&lt;/a&gt;</property>
+        <property name="label" translatable="yes">&lt;b&gt;Enable the channels you want to receive notifications for.&lt;/b&gt;</property>
         <property name="use-markup">True</property>
         <property name="justify">center</property>
         <property name="wrap">True</property>
@@ -205,11 +175,8 @@ This is a limit of the Twitch API.
       <packing>
         <property name="expand">False</property>
         <property name="fill">True</property>
-        <property name="position">5</property>
+        <property name="position">4</property>
       </packing>
-    </child>
-    <child>
-      <placeholder/>
     </child>
   </object>
 </interface>

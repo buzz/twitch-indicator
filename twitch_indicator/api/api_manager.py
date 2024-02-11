@@ -7,20 +7,19 @@ from gi.repository import GLib
 
 from twitch_indicator.api.twitch_api import TwitchApi
 from twitch_indicator.api.twitch_auth import Auth
-from twitch_indicator.api.twitch_event_sub import TwitchEventSub
 from twitch_indicator.util import coro_exception_handler
 
 
 class ApiManager:
-    def __init__(self, app):
+    def __init__(self, app, refresh_interval):
         self._logger = logging.getLogger(__name__)
         self.app = app
         self.loop = None
         self._thread = None
+        self._refresh_interval = refresh_interval
 
         self.auth = Auth()
         self.api = TwitchApi(self)
-        self.event_sub = TwitchEventSub(self)
 
     def run(self):
         """Start asyncio event loop."""
@@ -57,6 +56,10 @@ class ApiManager:
         """Acquire auth token."""
         await self.auth.acquire_token(auth_event)
 
+    def update_refresh_interval(self, refresh_interval):
+        self._logger.debug(f"update_refresh_interval(): {refresh_interval}")
+        self._refresh_interval = refresh_interval
+
     async def _start(self):
         """API thread main coroutine."""
         self._logger.debug("_start()")
@@ -69,19 +72,22 @@ class ApiManager:
         self._logger.debug(f"run(): Validated: {user_info}")
         GLib.idle_add(self.app.state.set_user_info, user_info)
 
-        await self.refresh_followed_channels(user_info["user_id"])
+        # Start periodic token validation
+        self.loop.create_task(self._periodic_validate())
+
+        await self._refresh_followed_channels(user_info["user_id"])
 
         # Get followed live streams
-        # live_streams = await self.api.fetch_followed_streams(user_info["user_id"])
-        # self._logger.debug(f"run(): Got live streams ({len(live_streams)})")
-        # GLib.idle_add(self.app.state.set_live_streams, live_streams)
+        live_streams = await self.api.fetch_followed_streams(user_info["user_id"])
+        self._logger.debug(f"run(): live streams: {len(live_streams)}")
 
-        # # Ensure current profile pictures
-        # await self.api.fetch_profile_pictures((s["user_id"] for s in live_streams))
+        # Ensure current profile pictures
+        await self.api.fetch_profile_pictures(s["user_id"] for s in live_streams)
 
-        # # Start listening to streams
-        # fut = asyncio.create_task(self.event_sub.start_listening())
-        # fut.add_done_callback(coro_exception_handler)
+        GLib.idle_add(self.app.state.set_live_streams, live_streams)
+
+        # Start stream polling cycle
+        self.loop.create_task(self._periodic_polling())
 
     async def _stop(self):
         """Stop pending tasks and thread."""
@@ -90,7 +96,24 @@ class ApiManager:
         [task.cancel() for task in tasks]
         await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def refresh_followed_channels(self, user_id=None):
+    # TODO: restart _periodic_polling when _refresh_interval changes
+    async def _periodic_polling(self):
+        """Poll followed streams periodically."""
+        while True:
+            await asyncio.sleep(self._refresh_interval * 60)
+
+            with self.app.state.locks["user_info"]:
+                user_id = self.app.state.user_info["user_id"]
+
+            live_streams = await self.api.fetch_followed_streams(user_id)
+            msg = f"_periodic_polling(): live streams: {len(live_streams)}"
+            self._logger.debug(msg)
+
+            await self.api.fetch_profile_pictures((s["user_id"] for s in live_streams))
+
+            GLib.idle_add(self.app.state.set_live_streams, live_streams)
+
+    async def _refresh_followed_channels(self, user_id=None):
         """Refresh followed channels list."""
         self._logger.debug("refresh_followed_channels()")
 
@@ -99,9 +122,15 @@ class ApiManager:
                 user_id = self.app.state.user_info["user_id"]
 
         followed_channels = await self.api.fetch_followed_channels(user_id)
-        print("111")
         GLib.idle_add(self.app.state.set_followed_channels, followed_channels)
-        print("222")
 
-    async def update_enabled_channel_ids(self, enabled_channel_ids):
-        self._enabled_channel_ids = enabled_channel_ids
+    async def _periodic_validate(self):
+        """
+        Validate token every hour as required by Twitch API.
+
+        https://dev.twitch.tv/docs/authentication/validate-tokens/
+        """
+        while True:
+            await asyncio.sleep(3600)  # 1 hour
+            user_info = await self.api.validate()
+            self._logger.debug(f"_periodic_validate(): Validated: {user_info}")

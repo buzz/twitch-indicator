@@ -34,8 +34,7 @@ class Auth:
         self._state = None
 
     async def acquire_token(self, auth_event):
-        """Aquire Twitch API auth token."""
-
+        """Start Twitch API user token flow."""
         self._logger.debug("acquire_token()")
 
         self._token_acquired_event = asyncio.Event()
@@ -65,7 +64,14 @@ class Auth:
         auth_event.set()
 
     async def _handle_request(self, request):
+        """
+        Twitch auth redirect endpoint.
+
+        Parse hash parameters and redirect to success page using JavaScript
+        The parameters are added as query string.
+        """
         self._logger.debug("_handle_request()")
+
         filepath = get_data_filepath("auth_response.html")
         async with aiofiles.open(filepath, "r", encoding="UTF-8") as f:
             success_url_parts = urlparse(TWITCH_AUTH_REDIRECT_URI)
@@ -75,7 +81,13 @@ class Auth:
             return web.Response(text=text, content_type="text/html")
 
     async def _handle_request_success(self, request):
+        """
+        Twitch auth success endpoint.
+
+        Parse query parameters and show user success message.
+        """
         self._logger.debug(f"_handle_request_success() url={request.url}")
+
         try:
             query = request.rel_url.query
 
@@ -99,7 +111,6 @@ class Auth:
 
     async def restore_token(self):
         """Restore auth token from config dir."""
-
         if await path.isfile(AUTH_TOKEN_PATH):
             async with aiofiles.open(AUTH_TOKEN_PATH, "r", encoding="UTF-8") as f:
                 self.token = await f.read()

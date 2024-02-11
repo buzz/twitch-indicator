@@ -14,13 +14,12 @@ from twitch_indicator.api.exceptions import (
     RateLimitExceededException,
 )
 from twitch_indicator.constants import (
-    DEFAULT_AVATAR,
     TWITCH_API_URL,
     TWITCH_AUTH_URL,
     TWITCH_CLIENT_ID,
     TWITCH_PAGE_SIZE,
 )
-from twitch_indicator.util import get_image_filename
+from twitch_indicator.util import get_cached_image_filename
 
 
 class TwitchApi:
@@ -132,7 +131,7 @@ class TwitchApi:
         resp = await self.get_api_response(url)
         return resp["data"]
 
-    async def fetch_profile_pictures(self, user_ids):
+    async def fetch_profile_pictures(self, all_user_ids):
         """
         Download profile picture if current one is older than 3 days.
 
@@ -143,8 +142,8 @@ class TwitchApi:
         # Skip images newer than 3 days
         user_ids = []
         now = datetime.now(timezone.utc)
-        for user_id in user_ids:
-            filename = get_image_filename(user_id)
+        for user_id in all_user_ids:
+            filename = get_cached_image_filename(user_id)
             try:
                 mtimestamp = datetime.utcfromtimestamp(await path.getmtime(filename))
                 mtimestamp = mtimestamp.replace(tzinfo=timezone.utc)
@@ -179,7 +178,7 @@ class TwitchApi:
                     if response.status == 200:
                         # Save image
                         img_data = await response.read()
-                        filename = get_image_filename(user_id)
+                        filename = get_cached_image_filename(user_id)
                         async with aiofiles.open(filename, "wb") as f:
                             await f.write(img_data)
                             self._logger.debug(

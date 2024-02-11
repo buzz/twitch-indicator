@@ -22,13 +22,6 @@ sudo ./setup.sh
 twitch-indicator &
 ```
 
-## Push vs. Poll
-
-### Push Notification Limit
-
-You can subscribe to a maximum of **10 real-time push notifications**
-concurrently, as enforced by the Twitch API.
-
 ### Additional Streams
 
 You are unrestricted in enabling additional streams beyond the push notification

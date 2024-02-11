@@ -2,6 +2,7 @@ import os.path
 
 from gi.repository import GLib
 
+APP_NAME = "Twitch Indicator"
 VERSION = "1.6"
 
 TWITCH_WEB_URL = "https://www.twitch.tv/"
@@ -13,10 +14,6 @@ TWITCH_AUTH_REDIRECT_URI = "http://localhost:17563"
 TWITCH_AUTH_SCOPES = ["user:read:follows"]
 TWITCH_CLIENT_ID = "vrulzk2tm1ozo2c1iv5a14m1ohbill"
 TWITCH_PAGE_SIZE = 100
-TWITCH_MAX_SUBSCRIPTIONS = 10
-DEFAULT_AVATAR = (
-    "http://static-cdn.jtvnw.net/jtv_user_pictures/xarth/404_user_150x150.png"
-)
 
 SETTINGS_KEY = "apps.twitch-indicator"
 UNICODE_ASCII_CHARACTER_SET = (

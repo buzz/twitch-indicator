@@ -21,7 +21,7 @@ class State:
         self.followed_channels = []
         self.live_streams = []
 
-        # Enabled channels (1=enabled, 2=realtime)
+        # Enabled channels
         self.enabled_channel_ids = self._app.settings.get_enabled_channel_ids()
 
     def set_user_info(self, user_info):
@@ -32,21 +32,6 @@ class State:
 
     def set_live_streams(self, live_streams):
         self._set_value("live_streams", live_streams)
-
-    def add_live_streams(self, added_streams):
-        with self.locks["live_streams"]:
-            for stream in added_streams:
-                try:
-                    idx = next(
-                        i
-                        for i, s in enumerate(self.live_streams)
-                        if s["user_id"] == stream["user_id"]
-                    )
-                    self.live_streams[idx] = stream
-                except StopIteration:
-                    self.live_streams.append(stream)
-        self._trigger_event("add_live_streams", added_streams)
-        self._trigger_event("live_streams", self.live_streams)
 
     def remove_live_streams(self, user_ids):
         with self.locks["live_streams"]:

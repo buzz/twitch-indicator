@@ -1,12 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="apps.twitch-indicator" path="/apps/twitch-indicator/">
-    <key type="s" name="twitch-username">
-      <default>"twitch"</default>
-      <summary>Your Twitch username</summary>
-      <description>Twitch username, which will be used to fetch followed channels.</description>
-    </key>
-
     <key type="b" name="enable-notifications">
       <default>true</default>
       <summary>Enable live stream notifications</summary>

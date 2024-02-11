@@ -95,10 +95,15 @@ class Indicator:
             menu_entry = Gtk.ImageMenuItem()
 
             # Channel icon
-            pixbuf = CachedProfileImage.new_from_cached(stream["user_id"])
-            pixbuf.scale_simple(32, 32, GdkPixbuf.InterpType.BILINEAR)
-            icon = Gtk.Image.new_from_pixbuf(pixbuf)
-            menu_entry.set_image(icon)
+            try:
+                pixbuf = CachedProfileImage.new_from_cached(stream["user_id"])
+                pixbuf.scale_simple(32, 32, GdkPixbuf.InterpType.BILINEAR)
+                icon = Gtk.Image.new_from_pixbuf(pixbuf)
+                menu_entry.set_image(icon)
+            except GLib.Error:
+                self._logger.warn(
+                    f"_stream_notification(): No profile image for {stream['user_id']}"
+                )
 
             # Channel label
             label = Gtk.Label()
