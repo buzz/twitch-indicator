@@ -31,6 +31,12 @@ class Settings:
     def set_boolean(self, *args, **kwargs):
         return self._settings.set_boolean(*args, **kwargs)
 
+    def get_double(self, *args, **kwargs):
+        return self._settings.get_double(*args, **kwargs)
+
+    def set_double(self, *args, **kwargs):
+        return self._settings.set_double(*args, **kwargs)
+
     def get_int(self, *args, **kwargs):
         return self._settings.get_int(*args, **kwargs)
 
@@ -66,5 +72,5 @@ class Settings:
 
     def _on_refresh_interval_changed(self, settings, key):
         self._app.api_manager.loop.call_soon_threadsafe(
-            self._app.api_manager.update_refresh_interval, self.get_int(key)
+            self._app.api_manager.update_refresh_interval, self.get_double(key)
         )

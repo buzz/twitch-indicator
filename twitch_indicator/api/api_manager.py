@@ -7,6 +7,7 @@ from gi.repository import GLib
 
 from twitch_indicator.api.twitch_api import TwitchApi
 from twitch_indicator.api.twitch_auth import Auth
+from twitch_indicator.constants import REFRESH_INTERVAL_LIMITS
 from twitch_indicator.util import coro_exception_handler
 
 
@@ -17,6 +18,7 @@ class ApiManager:
         self.loop = None
         self._thread = None
         self._refresh_interval = refresh_interval
+        self._periodic_polling_task = None
 
         self.auth = Auth()
         self.api = TwitchApi(self)
@@ -58,7 +60,10 @@ class ApiManager:
 
     def update_refresh_interval(self, refresh_interval):
         self._logger.debug(f"update_refresh_interval(): {refresh_interval}")
+        old_refresh_interval = self._refresh_interval
         self._refresh_interval = refresh_interval
+        if self._refresh_interval != old_refresh_interval:
+            self.loop.create_task(self._restart_periodic_polling())
 
     async def _start(self):
         """API thread main coroutine."""
@@ -87,7 +92,7 @@ class ApiManager:
         GLib.idle_add(self.app.state.set_live_streams, live_streams)
 
         # Start stream polling cycle
-        self.loop.create_task(self._periodic_polling())
+        await self._restart_periodic_polling()
 
     async def _stop(self):
         """Stop pending tasks and thread."""
@@ -96,11 +101,32 @@ class ApiManager:
         [task.cancel() for task in tasks]
         await asyncio.gather(*tasks, return_exceptions=True)
 
-    # TODO: restart _periodic_polling when _refresh_interval changes
+    async def _restart_periodic_polling(self):
+        """(Re)start periodic polling."""
+        self._logger.debug("_restart_periodic_polling()")
+
+        # Cancel old task
+        if (
+            self._periodic_polling_task is not None
+            and not self._periodic_polling_task.done()
+        ):
+            self._periodic_polling_task.cancel()
+            try:
+                await self._periodic_polling_task
+            except asyncio.CancelledError:
+                pass
+
+        self._periodic_polling_task = self.loop.create_task(self._periodic_polling())
+
     async def _periodic_polling(self):
         """Poll followed streams periodically."""
+
+        RI_MIN = int(REFRESH_INTERVAL_LIMITS[0] * 60)
+        RI_MAX = int(REFRESH_INTERVAL_LIMITS[1] * 60)
+        delay = max(min(int(self._refresh_interval * 60), RI_MAX), RI_MIN)
+
         while True:
-            await asyncio.sleep(self._refresh_interval * 60)
+            await asyncio.sleep(delay)
 
             with self.app.state.locks["user_info"]:
                 user_id = self.app.state.user_info["user_id"]
