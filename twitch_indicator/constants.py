@@ -26,9 +26,3 @@ CACHE_DIR = os.path.join(
 AUTH_TOKEN_PATH = os.path.join(CONFIG_DIR, "authtoken")
 FALLBACK_PROFILE_IMAGE_FILENAME = "fallback_profile_image.png"
 REFRESH_INTERVAL_LIMITS = (0.5, 15)
-
-if os.environ.get("TWITCH_MOCK_API") == "true":
-    TWITCH_API_URL = os.environ.get("TWITCH_API_URL")
-    TWITCH_WS_URL = os.environ.get("TWITCH_WS_URL")
-    TWITCH_AUTH_URL = os.environ.get("TWITCH_AUTH_URL")
-    TWITCH_CLIENT_ID = os.environ.get("TWITCH_CLIENT_ID")

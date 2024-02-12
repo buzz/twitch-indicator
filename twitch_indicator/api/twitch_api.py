@@ -2,32 +2,38 @@ import asyncio
 import logging
 import re
 from datetime import datetime, timedelta, timezone
+from typing import Any, Iterable, Optional
 
 import aiofiles
 import aiohttp
 from aiofiles.os import path
 from gi.repository import GLib
+from pydantic import TypeAdapter
 
 from twitch_indicator.api.exceptions import (
     NotAuthorizedException,
     RateLimitExceededException,
 )
+from twitch_indicator.api.models import FollowedChannel, Stream, UserInfo
 from twitch_indicator.constants import (
     TWITCH_AUTH_URL,
     TWITCH_CLIENT_ID,
     TWITCH_PAGE_SIZE,
 )
-from twitch_indicator.utils import build_api_url, get_cached_image_filename
+from twitch_indicator.utils import Params, build_api_url, get_cached_image_filename
+
+ta_followed_channels = TypeAdapter(list[FollowedChannel])
+ta_streams = TypeAdapter(list[Stream])
 
 
 class TwitchApi:
     """Access Twitch API."""
 
-    def __init__(self, api_manager):
+    def __init__(self, api_manager) -> None:
         self._logger = logging.getLogger(__name__)
         self._api_manager = api_manager
 
-    async def validate(self):
+    async def validate(self) -> UserInfo:
         """
         Validate token.
 
@@ -38,9 +44,9 @@ class TwitchApi:
         url = build_api_url("validate", url=TWITCH_AUTH_URL)
         resp = await self._get_api_response(url)
 
-        return resp
+        return UserInfo(**resp)
 
-    async def fetch_followed_channels(self, user_id):
+    async def fetch_followed_channels(self, user_id: int) -> list[FollowedChannel]:
         """
         Fetch followed channels and return as list of dictionaries.
 
@@ -48,11 +54,13 @@ class TwitchApi:
         """
         self._logger.debug("fetch_followed_channels()")
 
-        return await self._get_paginated_api_response(
+        resp = await self._get_paginated_api_response(
             "channels/followed", {"user_id": user_id}
         )
 
-    async def fetch_followed_streams(self, user_id):
+        return ta_followed_channels.validate_python(resp)
+
+    async def fetch_followed_streams(self, user_id: int) -> list[Stream]:
         """
         Fetch live streams followed by user_id and return as list of dictionaries.
 
@@ -60,11 +68,13 @@ class TwitchApi:
         """
         self._logger.debug("fetch_followed_streams()")
 
-        return await self._get_paginated_api_response(
+        resp = await self._get_paginated_api_response(
             "streams/followed", {"user_id": user_id}
         )
 
-    async def fetch_profile_pictures(self, all_user_ids):
+        return ta_streams.validate_python(resp)
+
+    async def fetch_profile_pictures(self, all_user_ids: Iterable[int]) -> None:
         """
         Download profile picture if current one is older than 3 days.
 
@@ -73,7 +83,7 @@ class TwitchApi:
         self._logger.debug("fetch_profile_pictures()")
 
         # Skip images newer than 3 days
-        user_ids = []
+        user_ids: list[int] = []
         now = datetime.now(timezone.utc)
         for user_id in all_user_ids:
             filename = get_cached_image_filename(user_id)
@@ -86,13 +96,13 @@ class TwitchApi:
                 user_ids.append(user_id)
 
         # Fetch profile image URLs
-        profile_urls = {}
+        profile_urls: dict[int, str] = {}
         idx = 0
         max = TWITCH_PAGE_SIZE
         while idx < len(user_ids):
             curr_user_ids = user_ids[idx:max]
 
-            params = [("id", user_id) for user_id in curr_user_ids]
+            params = {"id": [user_id for user_id in curr_user_ids]}
             url = build_api_url("users", params)
             resp = await self._get_api_response(url)
 
@@ -108,25 +118,30 @@ class TwitchApi:
             async with aiohttp.ClientSession() as session:
                 url = re.sub(r"-\d+x\d+", "-150x150", profile_image_url)
                 async with session.get(url) as response:
-                    if response.status == 200:
-                        # Save image
-                        img_data = await response.read()
-                        filename = get_cached_image_filename(user_id)
-                        async with aiofiles.open(filename, "wb") as f:
-                            await f.write(img_data)
-                            self._logger.debug(
-                                f"fetch_profile_pictures(): Saved {filename}"
-                            )
+                    if response.status != 200:
+                        msg = f"Unable to download profile image: {url}"
+                        self._logger.warning(msg)
+                        continue
 
-    async def _get_paginated_api_response(self, path, params_orig):
+                    # Save image
+                    img_data = await response.read()
+                    filename = get_cached_image_filename(user_id)
+                    async with aiofiles.open(filename, "wb") as f:
+                        await f.write(img_data)
+                        msg = "fetch_profile_pictures(): Saved %s"
+                        self._logger.debug(msg, filename)
+
+    async def _get_paginated_api_response(
+        self, path: str, params_orig: Params
+    ) -> list[Any]:
         """Perform a series of requests for a paginated endpoint."""
-        data = []
-        cursor = None
-        params = {**params_orig, "first": TWITCH_PAGE_SIZE}
+        data: list[Any] = []
+        cursor: Optional[str] = None
+        params: Params = {**params_orig, "first": TWITCH_PAGE_SIZE}
 
         while True:
             if cursor is not None:
-                params["after"] = cursor
+                params = {**params, "after": cursor}
 
             url = build_api_url(path, params)
             resp = await self._get_api_response(url)
@@ -140,7 +155,9 @@ class TwitchApi:
             if cursor is None:
                 return data
 
-    async def _get_api_response(self, url, method="GET", json=None):
+    async def _get_api_response(
+        self, url: str, method: str = "GET", json: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
         """Perform API request."""
         attempts = 3
         attempt = 0
@@ -177,3 +194,5 @@ class TwitchApi:
                 await auth_event.wait()
             finally:
                 attempt += 1
+
+        raise RuntimeError("Unable to query API")

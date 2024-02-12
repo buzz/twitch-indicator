@@ -1,7 +1,15 @@
-from gi.repository import AppIndicator3, GdkPixbuf, Gio, GLib, Gtk
+from typing import TYPE_CHECKING, Iterable
 
+from gi.repository import AppIndicator3, GdkPixbuf, GLib, Gtk
+
+from twitch_indicator.api.models import Stream
 from twitch_indicator.gui.cached_profile_image import CachedProfileImage
+from twitch_indicator.settings import Settings
+from twitch_indicator.state import ChannelState
 from twitch_indicator.utils import format_viewer_count, get_data_filepath
+
+if TYPE_CHECKING:
+    from twitch_indicator.gui.gui_manager import GuiManager
 
 
 class Indicator:
@@ -9,7 +17,7 @@ class Indicator:
 
     MSG_NO_LIVE_STREAMS = "No live streams..."
 
-    def __init__(self, gui_manager):
+    def __init__(self, gui_manager: "GuiManager") -> None:
         self._gui_manager = gui_manager
         self._app_indicator = AppIndicator3.Indicator.new(
             "Twitch indicator",
@@ -18,12 +26,14 @@ class Indicator:
         )
         self._app_indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
-        self._menu_streams = None
-        self._menu_item_streams = None
+        self._menu_streams = Gtk.Menu()
+        self._menu_item_streams = Gtk.MenuItem.new_with_label(
+            Indicator.MSG_NO_LIVE_STREAMS
+        )
         self._setup_menu()
         self._setup_events()
 
-    def _setup_events(self):
+    def _setup_events(self) -> None:
         self._gui_manager.app.state.add_handler(
             "live_streams", lambda _: self._update_streams_menu()
         )
@@ -32,7 +42,7 @@ class Indicator:
             lambda *_: self._update_streams_menu(),
         )
 
-    def _setup_menu(self):
+    def _setup_menu(self) -> None:
         """Setup menu."""
 
         # Root menu
@@ -40,10 +50,6 @@ class Indicator:
         menu.insert_action_group("menu", self._gui_manager.app.actions.action_group)
 
         # Streams menu
-        self._menu_streams = Gtk.Menu()
-        self._menu_item_streams = Gtk.MenuItem.new_with_label(
-            Indicator.MSG_NO_LIVE_STREAMS
-        )
         self._menu_item_streams.set_sensitive(False)
         self._menu_item_streams.set_submenu(self._menu_streams)
         menu.append(self._menu_item_streams)
@@ -63,7 +69,7 @@ class Indicator:
         menu.show_all()
         self._app_indicator.set_menu(menu)
 
-    def _update_streams_menu(self):
+    def _update_streams_menu(self) -> None:
         """Update stream list."""
         settings = self._gui_manager.app.settings
         menu = self._menu_streams
@@ -71,8 +77,7 @@ class Indicator:
         # Order streams by viewer count
         with self._gui_manager.app.state.locks["live_streams"]:
             streams = sorted(
-                self._gui_manager.app.state.live_streams,
-                key=lambda k: -k["viewer_count"],
+                self._gui_manager.app.state.live_streams, key=lambda s: -s.viewer_count
             )
 
         # No live streams?
@@ -89,14 +94,14 @@ class Indicator:
         if settings.get_boolean("show-selected-channels-on-top"):
             with self._gui_manager.app.state.locks["enabled_channel_ids"]:
                 ec_ids = self._gui_manager.app.state.enabled_channel_ids.items()
-                top_ids = [uid for uid, en in ec_ids if en == "1"]
+                top_ids = [uid for uid, en in ec_ids if en == ChannelState.ENABLED]
 
-            top_streams = [s for s in streams if s["user_id"] in top_ids]
+            top_streams = (s for s in streams if s.user_id in top_ids)
             self._create_stream_menu_item(menu, top_streams, settings)
 
             menu.append(Gtk.SeparatorMenuItem.new())
 
-            bottom_streams = [s for s in streams if s["user_id"] not in top_ids]
+            bottom_streams = (s for s in streams if s.user_id not in top_ids)
             self._create_stream_menu_item(menu, bottom_streams, settings)
         else:
             self._create_stream_menu_item(menu, streams, settings)
@@ -108,27 +113,28 @@ class Indicator:
         menu.show_all()
 
     @staticmethod
-    def _create_stream_menu_item(menu, streams, settings):
+    def _create_stream_menu_item(
+        menu: Gtk.Menu, streams: Iterable[Stream], settings: Settings
+    ) -> None:
         """Create menu item for stream."""
 
         for stream in streams:
             menu_item = Gtk.ImageMenuItem()
-            menu_item.set_detailed_action_name(
-                f"menu.open-stream::{stream['user_login']}"
-            )
+            menu_item.set_detailed_action_name(f"menu.open-stream::{stream.user_login}")
 
             # User profile image icon
-            pixbuf = CachedProfileImage.new_from_cached(stream["user_id"])
+            # TODO: pregenerate icon size on fetch time
+            pixbuf = CachedProfileImage.new_from_cached(stream.user_id)
             pixbuf.scale_simple(32, 32, GdkPixbuf.InterpType.BILINEAR)
             menu_item.set_image(Gtk.Image.new_from_pixbuf(pixbuf))
 
             # Label
             label = Gtk.Label()
-            markup = f"<b>{GLib.markup_escape_text(stream['user_name'])}</b>"
-            if settings.get_boolean("show-game-playing") and stream["game_name"]:
-                markup += f" • {GLib.markup_escape_text(stream['game_name'])}"
+            markup = f"<b>{GLib.markup_escape_text(stream.user_name)}</b>"
+            if settings.get_boolean("show-game-playing") and stream.game_name:
+                markup += f" • {GLib.markup_escape_text(stream.game_name)}"
             if settings.get_boolean("show-viewer-count"):
-                viewer_count = format_viewer_count(stream["viewer_count"])
+                viewer_count = format_viewer_count(stream.viewer_count)
                 markup += f" (<small>{viewer_count}</small>)"
             label.set_markup(markup)
             label.set_halign(Gtk.Align.START)

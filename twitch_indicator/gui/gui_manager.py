@@ -1,3 +1,6 @@
+import asyncio
+from typing import TYPE_CHECKING
+
 from gi.repository import Gdk, Gtk
 
 from twitch_indicator.gui.dialogs.auth_dialog import AuthDialog
@@ -7,9 +10,12 @@ from twitch_indicator.gui.indicator import Indicator
 from twitch_indicator.gui.notifications import Notifications
 from twitch_indicator.utils import get_data_filepath
 
+if TYPE_CHECKING:
+    from twitch_indicator.app import TwitchIndicatorApp
+
 
 class GuiManager:
-    def __init__(self, app):
+    def __init__(self, app: "TwitchIndicatorApp") -> None:
         self.app = app
         self.settings_dialog = SettingsDialog(self)
         self.channel_chooser_dialog = ChannelChooserDialog(self)
@@ -19,11 +25,11 @@ class GuiManager:
 
         self._setup_css_provider()
 
-    def run(self):
+    def run(self) -> None:
         """Run Gtk main loop."""
         Gtk.main()
 
-    def quit(self):
+    def quit(self) -> None:
         """Destroy windows and quit."""
         self.auth_dialog.destroy()
         self.settings_dialog.destroy()
@@ -31,21 +37,24 @@ class GuiManager:
 
         Gtk.main_quit()
 
-    def show_channel_chooser(self, settings_dialog):
+    def show_channel_chooser(self, settings_dialog: Gtk.Dialog) -> None:
         """Show channel chooser dialog."""
         self.channel_chooser_dialog.show(settings_dialog)
 
-    def show_settings(self):
+    def show_settings(self) -> None:
         """Show settings dialog."""
         self.settings_dialog.show()
 
-    def show_auth_dialog(self, auth_event):
+    def show_auth_dialog(self, auth_event: "asyncio.Event") -> None:
         """Show authentication dialog."""
         self.auth_dialog.show(auth_event)
 
-    def _setup_css_provider(self):
+    def _setup_css_provider(self) -> None:
         """Setup CSS provider."""
         screen = Gdk.Screen.get_default()
+        if screen is None:
+            raise RuntimeError("Unable to get screen")
+
         css_provider = Gtk.CssProvider()
         css_provider.load_from_path(get_data_filepath("style.css"))
         Gtk.StyleContext.add_provider_for_screen(

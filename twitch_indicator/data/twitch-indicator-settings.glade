@@ -8,7 +8,7 @@
     <property name="page-increment">1</property>
   </object>
   <!-- n-columns=2 n-rows=10 -->
-  <object class="GtkGrid" id="grid1">
+  <object class="GtkGrid" id="grid">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="margin-bottom">10</property>
@@ -45,7 +45,7 @@
       </packing>
     </child>
     <child>
-      <object class="GtkSwitch" id="show_notifications">
+      <object class="GtkSwitch" id="switch_show_notifications">
         <property name="visible">True</property>
         <property name="can-focus">True</property>
         <property name="tooltip-text" translatable="yes">Enable notifications for live channels.</property>
@@ -73,7 +73,7 @@
       </packing>
     </child>
     <child>
-      <object class="GtkSwitch" id="show_viewer_count">
+      <object class="GtkSwitch" id="switch_show_viewer_count">
         <property name="visible">True</property>
         <property name="can-focus">True</property>
         <property name="tooltip-text" translatable="yes">Show viewer count in the live channels list.</property>
@@ -131,7 +131,7 @@ Available placeholders:
       </packing>
     </child>
     <child>
-      <object class="GtkSwitch" id="show_game">
+      <object class="GtkSwitch" id="switch_show_game">
         <property name="visible">True</property>
         <property name="can-focus">True</property>
         <property name="tooltip-text" translatable="yes">Show the current game in the live channels list.</property>
@@ -197,7 +197,7 @@ Available placeholders:
       </packing>
     </child>
     <child>
-      <object class="GtkSwitch" id="show_selected_channels_on_top">
+      <object class="GtkSwitch" id="switch_show_selected_channels_on_top">
         <property name="visible">True</property>
         <property name="can-focus">True</property>
         <property name="tooltip-text" translatable="yes">Sort selected notification channels to the top of live channels list.</property>
@@ -272,7 +272,7 @@ Available placeholders:
           </packing>
         </child>
         <child>
-          <object class="GtkScale" id="refresh_interval">
+          <object class="GtkScale" id="scale_refresh_interval">
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="hexpand">True</property>
