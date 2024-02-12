@@ -6,5 +6,6 @@
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true
     },
-    "isort.args": ["--profile", "black"]
+    "isort.args": ["--profile", "black"],
+    "python.analysis.typeCheckingMode": "strict"
 }
