@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "twitch_indicator/constants.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/data",
+    "/twitch_indicator",
+    "/README.md",
+    "/LICENSE.txt",
+    "/LICENSE-zlib.txt",
+]
+
+[project]
+name = "twitch-indicator"
+description = "Twitch.tv indicator for Linux. Tracks your followed channels and notifies when they go live."
+authors = [{ name = "buzz", email = "buzz@users.noreply.github.com" }]
+license-files = { paths = ["LICENSE.txt", "LICENSE-zlib.txt"] }
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "aiofiles>=23.2.1",
+    "aiohttp>=3.9.3",
+    "pydantic~=2.6.1",
+    "PyGObject>=3.46.0",
+]
+dynamic = ["version"]
+
+[project.gui-scripts]
+twitch-indicator = "twitch_indicator.__main__:main"
+
+[project.urls]
+Source = "https://github.com/buzz/twitch-indicator"
+"Bug Tracker" = "https://github.com/buzz/twitch-indicator/issues"
+
+[tool.ruff]
+line-length = 88
+include = ["twitch_indicator/**/*.py"]
+exclude = [".eggs", ".git", ".ruff_cache", ".venv"]
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+follow_imports = "silent"
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_reexport = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
