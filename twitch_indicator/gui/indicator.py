@@ -27,9 +27,7 @@ class Indicator:
         self._app_indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
         self._menu_streams = Gtk.Menu()
-        self._menu_item_streams = Gtk.MenuItem.new_with_label(
-            Indicator.MSG_NO_LIVE_STREAMS
-        )
+        self._menu_item_streams = Gtk.MenuItem.new_with_label(Indicator.MSG_NO_LIVE_STREAMS)
         self._setup_menu()
         self._setup_events()
 

@@ -54,9 +54,7 @@ class TwitchApi:
         """
         self._logger.debug("fetch_followed_channels()")
 
-        resp = await self._get_paginated_api_response(
-            "channels/followed", {"user_id": user_id}
-        )
+        resp = await self._get_paginated_api_response("channels/followed", {"user_id": user_id})
 
         return ta_followed_channels.validate_python(resp)
 
@@ -68,9 +66,7 @@ class TwitchApi:
         """
         self._logger.debug("fetch_followed_streams()")
 
-        resp = await self._get_paginated_api_response(
-            "streams/followed", {"user_id": user_id}
-        )
+        resp = await self._get_paginated_api_response("streams/followed", {"user_id": user_id})
 
         return ta_streams.validate_python(resp)
 
@@ -131,9 +127,7 @@ class TwitchApi:
                         msg = "fetch_profile_pictures(): Saved %s"
                         self._logger.debug(msg, filename)
 
-    async def _get_paginated_api_response(
-        self, path: str, params_orig: Params
-    ) -> list[Any]:
+    async def _get_paginated_api_response(self, path: str, params_orig: Params) -> list[Any]:
         """Perform a series of requests for a paginated endpoint."""
         data: list[Any] = []
         cursor: Optional[str] = None
@@ -173,9 +167,7 @@ class TwitchApi:
                         "Client-Id": TWITCH_CLIENT_ID,
                         "Authorization": f"Bearer {self._api_manager.auth.token}",
                     }
-                    async with session.request(
-                        method, url, json=json, headers=headers
-                    ) as response:
+                    async with session.request(method, url, json=json, headers=headers) as response:
                         if response.status in (200, 202, 204):
                             return await response.json()
                         elif response.status == 401:

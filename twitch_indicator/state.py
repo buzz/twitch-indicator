@@ -47,9 +47,7 @@ class State:
     def set_live_streams(self, live_streams: list[Stream]) -> None:
         self._set_value("live_streams", live_streams)
 
-    def set_enabled_channel_ids(
-        self, enabled_channel_ids: dict[str, ChannelState]
-    ) -> None:
+    def set_enabled_channel_ids(self, enabled_channel_ids: dict[str, ChannelState]) -> None:
         self._set_value("enabled_channel_ids", enabled_channel_ids)
 
     def add_handler(self, name: str, handler: Callable[[Any], None]) -> None:
@@ -64,9 +62,7 @@ class State:
         if name in self._handlers and handler in self._handlers[name]:
             self._handlers[name].remove(handler)
 
-    def _trigger_event(
-        self, name: str, *args: list[Any], **kwargs: dict[str, Any]
-    ) -> None:
+    def _trigger_event(self, name: str, *args: list[Any], **kwargs: dict[str, Any]) -> None:
         if name in self._handlers:
             for handler in self._handlers[name]:
                 if inspect.iscoroutinefunction(handler):

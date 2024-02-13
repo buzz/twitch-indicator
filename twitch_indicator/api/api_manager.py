@@ -115,10 +115,7 @@ class ApiManager:
         self._logger.debug("_restart_periodic_polling()")
 
         # Cancel old task
-        if (
-            self._periodic_polling_task is not None
-            and not self._periodic_polling_task.done()
-        ):
+        if self._periodic_polling_task is not None and not self._periodic_polling_task.done():
             self._periodic_polling_task.cancel()
             try:
                 await self._periodic_polling_task

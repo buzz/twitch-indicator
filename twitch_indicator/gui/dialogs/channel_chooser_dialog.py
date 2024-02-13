@@ -42,9 +42,7 @@ class ChannelChooserDialog:
 
         # builder
         builder = Gtk.Builder()
-        builder.add_from_file(
-            get_data_filepath("twitch-indicator-channel-chooser.glade")
-        )
+        builder.add_from_file(get_data_filepath("twitch-indicator-channel-chooser.glade"))
 
         # get widgets
         content_box = cast(Gtk.Box, builder.get_object("content_box"))
@@ -78,9 +76,7 @@ class ChannelChooserDialog:
 
         # channel enabled column
         enabled_renderer = Gtk.CellRendererToggle()
-        col_enabled = Gtk.TreeViewColumn(
-            title="Enabled", cell_renderer=enabled_renderer
-        )
+        col_enabled = Gtk.TreeViewColumn(title="Enabled", cell_renderer=enabled_renderer)
         col_enabled.add_attribute(enabled_renderer, "active", 1)
         col_enabled.set_expand(False)
         self._list_view.append_column(col_enabled)
@@ -194,9 +190,7 @@ class ChannelChooserDialog:
 
         return 1
 
-    def _filter_func(
-        self, model: Gtk.TreeModelFilter, iter: Gtk.TreeIter, _: Any
-    ) -> bool:
+    def _filter_func(self, model: Gtk.TreeModelFilter, iter: Gtk.TreeIter, _: Any) -> bool:
         """Filter list by search phrase."""
         if self._search_text == "":
             return True

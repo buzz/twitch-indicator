@@ -37,7 +37,7 @@ Source = "https://github.com/buzz/twitch-indicator"
 "Bug Tracker" = "https://github.com/buzz/twitch-indicator/issues"
 
 [tool.ruff]
-line-length = 88
+line-length = 100
 include = ["twitch_indicator/**/*.py"]
 exclude = [".eggs", ".git", ".ruff_cache", ".venv"]
 

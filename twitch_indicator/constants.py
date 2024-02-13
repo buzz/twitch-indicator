@@ -16,9 +16,7 @@ TWITCH_CLIENT_ID = "vrulzk2tm1ozo2c1iv5a14m1ohbill"
 TWITCH_PAGE_SIZE = 100
 
 SETTINGS_KEY = "apps.twitch-indicator"
-UNICODE_ASCII_CHARACTER_SET = (
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-)
+UNICODE_ASCII_CHARACTER_SET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 CONFIG_DIR = os.path.join(GLib.get_user_config_dir(), "twitch-indicator")
 CACHE_DIR = os.path.join(
     os.getenv("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "twitch-indicator"

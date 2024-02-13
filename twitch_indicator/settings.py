@@ -58,16 +58,10 @@ class Settings:
         return self.settings.get_default_value(key)
 
     def setup_event_handlers(self) -> None:
-        self._app.state.add_handler(
-            "enabled_channel_ids", self._set_enabled_channel_ids
-        )
-        self.settings.connect(
-            "changed::refresh-interval", self._on_refresh_interval_changed
-        )
+        self._app.state.add_handler("enabled_channel_ids", self._set_enabled_channel_ids)
+        self.settings.connect("changed::refresh-interval", self._on_refresh_interval_changed)
 
-    def _set_enabled_channel_ids(
-        self, enabled_channel_ids: dict[str, ChannelState]
-    ) -> None:
+    def _set_enabled_channel_ids(self, enabled_channel_ids: dict[str, ChannelState]) -> None:
         """Store serialized enabled channel IDs to settings."""
         enabled_list: list[str] = []
         with self._app.state.locks["enabled_channel_ids"]:

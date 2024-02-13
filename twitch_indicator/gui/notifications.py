@@ -25,9 +25,7 @@ class Notifications:
 
         Notify.init(APP_NAME)
 
-        self._gui_manager.app.state.add_handler(
-            "live_streams", self._update_live_streams
-        )
+        self._gui_manager.app.state.add_handler("live_streams", self._update_live_streams)
 
     def _update_live_streams(self, new_streams: list[Stream]) -> None:
         """Filter live streams for new streams."""
@@ -49,8 +47,7 @@ class Notifications:
                             # stream wasn't live before?
                             if s.user_id not in self._live_stream_user_ids
                             # stream is in enabled list?
-                            and ec_ids.get(s.user_id, ChannelState.DISABLED)
-                            == ChannelState.ENABLED
+                            and ec_ids.get(s.user_id, ChannelState.DISABLED) == ChannelState.ENABLED
                         ]
                     GLib.idle_add(self._show_notifications, notify_list)
 

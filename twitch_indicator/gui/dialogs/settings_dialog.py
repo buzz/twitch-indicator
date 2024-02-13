@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING, Optional, cast
 
 from gi.repository import Gtk
 
-from twitch_indicator.api.models import FollowedChannel
 from twitch_indicator.constants import REFRESH_INTERVAL_LIMITS
 from twitch_indicator.utils import get_data_filepath
 
@@ -50,30 +49,18 @@ class SettingsDialog:
             Gtk.Switch, builder.get_object("switch_show_notifications")
         )
         switch_show_game = cast(Gtk.Switch, builder.get_object("switch_show_game"))
-        switch_show_viewer_count = cast(
-            Gtk.Switch, builder.get_object("switch_show_viewer_count")
-        )
+        switch_show_viewer_count = cast(Gtk.Switch, builder.get_object("switch_show_viewer_count"))
         switch_show_selected_channels_on_top = cast(
             Gtk.Switch, builder.get_object("switch_show_selected_channels_on_top")
         )
         self._entry_open_command = cast(Gtk.Entry, builder.get_object("open_command"))
-        scale_refresh_interval = cast(
-            Gtk.Scale, builder.get_object("scale_refresh_interval")
-        )
-        self._label_refresh_interval = cast(
-            Gtk.Label, builder.get_object("label_refresh_interval")
-        )
-        self._btn_channel_chooser = cast(
-            Gtk.Button, builder.get_object("btn_channel_chooser")
-        )
-        btn_revert_open_cmd = cast(
-            Gtk.Button, builder.get_object("btn_revert_open_command")
-        )
+        scale_refresh_interval = cast(Gtk.Scale, builder.get_object("scale_refresh_interval"))
+        self._label_refresh_interval = cast(Gtk.Label, builder.get_object("label_refresh_interval"))
+        self._btn_channel_chooser = cast(Gtk.Button, builder.get_object("btn_channel_chooser"))
+        btn_revert_open_cmd = cast(Gtk.Button, builder.get_object("btn_revert_open_command"))
 
         # apply settings values to controls
-        switch_show_notifications.set_active(
-            settings.get_boolean("enable-notifications")
-        )
+        switch_show_notifications.set_active(settings.get_boolean("enable-notifications"))
         switch_show_game.set_active(settings.get_boolean("show-game-playing"))
         switch_show_viewer_count.set_active(settings.get_boolean("show-viewer-count"))
         switch_show_selected_channels_on_top.set_active(
@@ -98,24 +85,16 @@ class SettingsDialog:
 
         # events
         btn_revert_open_cmd.connect("clicked", self._on_btn_revert_open_commed_clicked)
-        scale_refresh_interval.connect(
-            "value-changed", self._on_refresh_interval_value_changed
-        )
-        self._btn_channel_chooser.connect(
-            "clicked", self._on_btn_channel_chooser_clicked
-        )
+        scale_refresh_interval.connect("value-changed", self._on_refresh_interval_value_changed)
+        self._btn_channel_chooser.connect("clicked", self._on_btn_channel_chooser_clicked)
 
         self._enable_btn_channel_chooser()
         self._dialog.show_all()
 
         if self._dialog.run() == Gtk.ResponseType.OK:
-            settings.set_boolean(
-                "enable-notifications", switch_show_notifications.get_active()
-            )
+            settings.set_boolean("enable-notifications", switch_show_notifications.get_active())
             settings.set_boolean("show-game-playing", switch_show_game.get_active())
-            settings.set_boolean(
-                "show-viewer-count", switch_show_viewer_count.get_active()
-            )
+            settings.set_boolean("show-viewer-count", switch_show_viewer_count.get_active())
             settings.set_boolean(
                 "show-selected-channels-on-top",
                 switch_show_selected_channels_on_top.get_active(),
