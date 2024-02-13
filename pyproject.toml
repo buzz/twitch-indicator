@@ -18,7 +18,7 @@ include = [
 name = "twitch-indicator"
 description = "Twitch.tv indicator for Linux. Tracks your followed channels and notifies when they go live."
 authors = [{ name = "buzz", email = "buzz@users.noreply.github.com" }]
-license-files = { paths = ["LICENSE.txt", "LICENSE-zlib.txt"] }
+license = "GPL-3.0-or-later"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
