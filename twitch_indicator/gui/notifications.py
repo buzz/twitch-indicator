@@ -8,7 +8,7 @@ from twitch_indicator.api.models import Stream
 from twitch_indicator.constants import APP_NAME
 from twitch_indicator.gui.cached_profile_image import CachedProfileImage
 from twitch_indicator.state import ChannelState
-from twitch_indicator.utils import build_stream_url, format_viewer_count, open_stream
+from twitch_indicator.utils import format_viewer_count
 
 if TYPE_CHECKING:
     from twitch_indicator.gui.gui_manager import GuiManager
@@ -88,9 +88,7 @@ class Notifications:
 
         # Keep a reference to notifications, otherwise action callback won't work
         self._notifications.append(notification)
-        notification.add_action(
-            "watch", "Watch", self._on_notification_watch, build_stream_url(user_login)
-        )
+        notification.add_action("watch", "Watch", self._on_notification_watch, user_login)
         notification.connect("closed", self._on_closed)
 
         notification.set_image_from_pixbuf(pixbuf)
@@ -101,9 +99,9 @@ class Notifications:
         self._notifications.remove(notification)
 
     def _on_notification_watch(
-        self, notification: Notify.Notification, action: str, url: str
+        self, notification: Notify.Notification, action: str, user_login: str
     ) -> None:
         """Callback for notification stream watch action."""
-        # TODO: activate SimpleAction
-        open_cmd = self._gui_manager.app.settings.get_string("open-command")
-        open_stream(url, open_cmd)
+        self._gui_manager.app.actions.action_group.activate_action(
+            "open-stream", GLib.Variant.new_string(user_login)
+        )

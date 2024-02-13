@@ -1,9 +1,11 @@
 import logging
+import subprocess
+import webbrowser
 from typing import TYPE_CHECKING, Callable, Optional, Union
 
 from gi.repository import Gio, GLib
 
-from twitch_indicator.utils import build_stream_url, open_stream
+from twitch_indicator.utils import build_stream_url
 
 if TYPE_CHECKING:
     from twitch_indicator.app import TwitchIndicatorApp
@@ -43,8 +45,16 @@ class Actions:
         self._app.gui_manager.show_settings()
 
     def _on_open_stream(self, action: Gio.SimpleAction, param: GLib.Variant) -> None:
-        """Callback for the open-stream action."""
+        """
+        Callback for the open-stream action.
+
+        Open URL in browser using either default webbrowser or custom command.
+        """
         self._logger.debug("_on_open_stream(): %s", param)
+
         user_login = param.get_string()
         open_cmd = self._app.settings.get_string("open-command")
-        open_stream(build_stream_url(user_login), open_cmd)
+        url = build_stream_url(user_login)
+        browser = webbrowser.get().basename
+        formatted = open_cmd.format(url=url, browser=browser).split()
+        subprocess.Popen(formatted)

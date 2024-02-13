@@ -1,7 +1,5 @@
 import os
-import subprocess
 import traceback
-import webbrowser
 from concurrent.futures import Future
 from datetime import datetime, timezone
 from importlib.resources import files
@@ -57,13 +55,6 @@ def build_api_url(
     if params:
         url_parts = url_parts._replace(query=urlencode(params, doseq=True))
     return urlunparse(url_parts)
-
-
-def open_stream(url: str, open_command: str) -> None:
-    """Open URL in browser using either default webbrowser or custom command."""
-    browser = webbrowser.get().basename
-    formatted = open_command.format(url=url, browser=browser).split()
-    subprocess.Popen(formatted)
 
 
 def coro_exception_handler(fut: Future[Any]) -> None:
