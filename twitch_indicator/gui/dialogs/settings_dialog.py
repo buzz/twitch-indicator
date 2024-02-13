@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Optional, cast
 from gi.repository import Gtk
 
 from twitch_indicator.constants import REFRESH_INTERVAL_LIMITS
-from twitch_indicator.utils import get_data_filepath
+from twitch_indicator.utils import get_data_file
 
 if TYPE_CHECKING:
     from twitch_indicator.gui.gui_manager import GuiManager
@@ -41,7 +41,7 @@ class SettingsDialog:
 
         # builder
         builder = Gtk.Builder()
-        builder.add_from_file(get_data_filepath("twitch-indicator-settings.glade"))
+        builder.add_from_file(str(get_data_file("twitch-indicator-settings.glade")))
 
         # get widgets
         grid = cast(Gtk.Grid, builder.get_object("grid"))

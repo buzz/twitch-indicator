@@ -8,7 +8,7 @@ from twitch_indicator.gui.dialogs.channel_chooser_dialog import ChannelChooserDi
 from twitch_indicator.gui.dialogs.settings_dialog import SettingsDialog
 from twitch_indicator.gui.indicator import Indicator
 from twitch_indicator.gui.notifications import Notifications
-from twitch_indicator.utils import get_data_filepath
+from twitch_indicator.utils import get_data_file
 
 if TYPE_CHECKING:
     from twitch_indicator.app import TwitchIndicatorApp
@@ -56,7 +56,7 @@ class GuiManager:
             raise RuntimeError("Unable to get screen")
 
         css_provider = Gtk.CssProvider()
-        css_provider.load_from_path(get_data_filepath("style.css"))
+        css_provider.load_from_path(str(get_data_file("style.css")))
         Gtk.StyleContext.add_provider_for_screen(
             screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )

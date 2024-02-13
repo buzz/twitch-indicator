@@ -18,7 +18,7 @@ from twitch_indicator.constants import (
     TWITCH_CLIENT_ID,
     UNICODE_ASCII_CHARACTER_SET,
 )
-from twitch_indicator.utils import build_api_url, get_data_filepath
+from twitch_indicator.utils import build_api_url, get_data_file
 
 
 class Auth:
@@ -79,7 +79,7 @@ class Auth:
         success_url_parts = success_url_parts._replace(path="/success")
         success_url = urlunparse(success_url_parts)
 
-        filepath = get_data_filepath("auth_response.html")
+        filepath = get_data_file("auth_response.html")
         async with aiofiles.open(filepath, "r", encoding="UTF-8") as f:
             text = (await f.read()).replace("__SUCCESS_URL__", success_url)
 
@@ -108,7 +108,7 @@ class Auth:
 
             await self._store_token(self.token)
 
-            filepath = get_data_filepath("auth_success_response.html")
+            filepath = get_data_file("auth_success_response.html")
             async with aiofiles.open(filepath, "r", encoding="UTF-8") as f:
                 return web.Response(text=await f.read(), content_type="text/html")
         except ValueError:

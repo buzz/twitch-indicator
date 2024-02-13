@@ -6,7 +6,7 @@ from twitch_indicator.api.models import Stream
 from twitch_indicator.gui.cached_profile_image import CachedProfileImage
 from twitch_indicator.settings import Settings
 from twitch_indicator.state import ChannelState
-from twitch_indicator.utils import format_viewer_count, get_data_filepath
+from twitch_indicator.utils import format_viewer_count, get_data_file
 
 if TYPE_CHECKING:
     from twitch_indicator.gui.gui_manager import GuiManager
@@ -21,7 +21,7 @@ class Indicator:
         self._gui_manager = gui_manager
         self._app_indicator = AppIndicator3.Indicator.new(
             "Twitch indicator",
-            get_data_filepath("twitch-indicator.svg"),
+            str(get_data_file("twitch-indicator.svg")),
             AppIndicator3.IndicatorCategory.APPLICATION_STATUS,
         )
         self._app_indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)

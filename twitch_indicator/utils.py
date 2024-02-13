@@ -4,7 +4,8 @@ import traceback
 import webbrowser
 from concurrent.futures import Future
 from datetime import datetime, timezone
-from typing import Any, Mapping, Optional, Sequence
+from importlib.resources import files
+from typing import Any, Mapping, Optional, Sequence, cast
 from urllib.parse import urlencode, urlparse, urlunparse
 
 from twitch_indicator.constants import CACHE_DIR, TWITCH_API_URL, TWITCH_WEB_URL
@@ -15,9 +16,9 @@ ParamVal = str | int
 Params = Mapping[str, ParamVal | Sequence[ParamVal]]
 
 
-def get_data_filepath(path: str) -> str:
-    """Return package data file path."""
-    return os.path.join(_ROOT, "data", path)
+def get_data_file(filename: str) -> os.PathLike[str]:
+    """Get resource data file."""
+    return cast(os.PathLike[str], files("twitch_indicator.data").joinpath(filename))
 
 
 def get_cached_image_filename(user_id: int) -> str:

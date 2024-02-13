@@ -1,7 +1,7 @@
 from gi.repository import GdkPixbuf, GLib
 
 from twitch_indicator.constants import FALLBACK_PROFILE_IMAGE_FILENAME
-from twitch_indicator.utils import get_cached_image_filename, get_data_filepath
+from twitch_indicator.utils import get_cached_image_filename, get_data_file
 
 
 class CachedProfileImage(GdkPixbuf.Pixbuf):
@@ -13,8 +13,8 @@ class CachedProfileImage(GdkPixbuf.Pixbuf):
         try:
             pixbuf = GdkPixbuf.Pixbuf.new_from_file(get_cached_image_filename(channel_id))
         except GLib.Error:
-            filepath = get_data_filepath(FALLBACK_PROFILE_IMAGE_FILENAME)
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file(filepath)
+            filepath = get_data_file(FALLBACK_PROFILE_IMAGE_FILENAME)
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(filepath))
 
         if pixbuf is None:
             raise RuntimeError("Could not load pixbuf")
