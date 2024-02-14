@@ -121,9 +121,7 @@ class Indicator:
             menu_item.set_detailed_action_name(f"menu.open-stream::{stream.user_login}")
 
             # User profile image icon
-            # TODO: pregenerate icon size on fetch time
-            pixbuf = CachedProfileImage.new_from_cached(stream.user_id)
-            pixbuf.scale_simple(32, 32, GdkPixbuf.InterpType.BILINEAR)
+            pixbuf = CachedProfileImage.new_from_cached(stream.user_id, "icon")
             menu_item.set_image(Gtk.Image.new_from_pixbuf(pixbuf))
 
             # Label

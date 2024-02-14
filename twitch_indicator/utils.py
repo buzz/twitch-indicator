@@ -3,7 +3,7 @@ import traceback
 from concurrent.futures import Future
 from datetime import datetime, timezone
 from importlib.resources import files
-from typing import Any, Mapping, Optional, Sequence, cast
+from typing import Any, Literal, Mapping, Optional, Sequence, cast
 from urllib.parse import urlencode, urlparse, urlunparse
 
 from twitch_indicator.constants import CACHE_DIR, TWITCH_API_URL, TWITCH_WEB_URL
@@ -12,6 +12,7 @@ _ROOT = os.path.abspath(os.path.dirname(__file__))
 
 ParamVal = str | int
 Params = Mapping[str, ParamVal | Sequence[ParamVal]]
+ImageVariant = Literal["regular", "icon"]
 
 
 def get_data_file(filename: str) -> os.PathLike[str]:
@@ -19,9 +20,10 @@ def get_data_file(filename: str) -> os.PathLike[str]:
     return cast(os.PathLike[str], files("twitch_indicator.data").joinpath(filename))
 
 
-def get_cached_image_filename(user_id: int) -> str:
+def get_cached_image_filename(user_id: int, variant: ImageVariant = "regular") -> str:
     """Get cached image file name."""
-    return os.path.join(CACHE_DIR, str(user_id))
+    append = "" if variant == "regular" else "_icon"
+    return os.path.join(CACHE_DIR, f"{user_id}{append}")
 
 
 def format_viewer_count(count: int) -> str:

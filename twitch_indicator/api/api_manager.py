@@ -4,6 +4,7 @@ from threading import Thread
 from time import sleep
 from typing import TYPE_CHECKING, Optional
 
+import aiohttp
 from gi.repository import GLib
 
 from twitch_indicator.api.twitch_api import TwitchApi
@@ -30,6 +31,7 @@ class ApiManager:
     def run(self) -> None:
         """Start asyncio event loop."""
         self.loop = asyncio.new_event_loop()
+        self.api.set_session(aiohttp.ClientSession(loop=self.loop))
         self._thread = Thread(target=self.loop.run_forever)
         self._thread.start()
         fut = asyncio.run_coroutine_threadsafe(self._start(), self.loop)
@@ -92,10 +94,12 @@ class ApiManager:
         # Get followed live streams
         live_streams = await self.api.fetch_followed_streams(user_info.user_id)
         self._logger.debug("run(): live streams: %d", len(live_streams))
-        GLib.idle_add(self.app.state.set_live_streams, live_streams)
 
         # Ensure current profile pictures
         await self.api.fetch_profile_pictures(s.user_id for s in live_streams)
+
+        # Send live stream to GUI
+        GLib.idle_add(self.app.state.set_live_streams, live_streams)
 
         # Start stream polling cycle
         await self._restart_periodic_polling()
@@ -106,6 +110,11 @@ class ApiManager:
     async def _stop(self) -> None:
         """Stop pending tasks and thread."""
         self._logger.debug("_stop()")
+
+        # Close client session
+        await self.api.close_session()
+
+        # Cancel and gather remaining tasks
         tasks = [t for t in asyncio.all_tasks() if t != asyncio.current_task()]
         [task.cancel() for task in tasks]
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -145,8 +154,10 @@ class ApiManager:
             msg = "_periodic_polling(): live streams: %d"
             self._logger.debug(msg, len(live_streams))
 
+            # Ensure current profile pictures
             await self.api.fetch_profile_pictures(s.user_id for s in live_streams)
 
+            # Send live stream to GUI
             GLib.idle_add(self.app.state.set_live_streams, live_streams)
 
     async def _refresh_followed_channels(self, user_id: int) -> None:

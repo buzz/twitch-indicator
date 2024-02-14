@@ -23,4 +23,5 @@ CACHE_DIR = os.path.join(
 )
 AUTH_TOKEN_PATH = os.path.join(CONFIG_DIR, "authtoken")
 FALLBACK_PROFILE_IMAGE_FILENAME = "fallback_profile_image.png"
+FALLBACK_PROFILE_IMAGE_ICON_FILENAME = "fallback_profile_image_icon.png"
 REFRESH_INTERVAL_LIMITS = (0.5, 15)
