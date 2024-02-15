@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Iterable
 
-from gi.repository import AppIndicator3, GdkPixbuf, GLib, Gtk
+from gi.repository import AppIndicator3, GLib, Gtk
 
 from twitch_indicator.api.models import Stream
 from twitch_indicator.gui.cached_profile_image import CachedProfileImage
@@ -15,8 +15,6 @@ if TYPE_CHECKING:
 class Indicator:
     """App indicator."""
 
-    MSG_NO_LIVE_STREAMS = "No live streams..."
-
     def __init__(self, gui_manager: "GuiManager") -> None:
         self._gui_manager = gui_manager
         self._app_indicator = AppIndicator3.Indicator.new(
@@ -27,11 +25,14 @@ class Indicator:
         self._app_indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
 
         self._menu_streams = Gtk.Menu()
-        self._menu_item_streams = Gtk.MenuItem.new_with_label(Indicator.MSG_NO_LIVE_STREAMS)
+        self._menu_item_streams = Gtk.MenuItem.new()
         self._setup_menu()
         self._setup_events()
 
     def _setup_events(self) -> None:
+        self._gui_manager.app.state.add_handler(
+            "validation_info", lambda _: self._update_menu_item_streams()
+        )
         self._gui_manager.app.state.add_handler(
             "live_streams", lambda _: self._update_streams_menu()
         )
@@ -64,8 +65,29 @@ class Indicator:
         menu.append(menu_item_settings)
         menu.append(menu_item_quit)
 
+        self._update_menu_item_streams()
         menu.show_all()
         self._app_indicator.set_menu(menu)
+
+    def _update_menu_item_streams(self) -> None:
+        """Update live streams menu item label."""
+        with self._gui_manager.app.state.locks["validation_info"]:
+            logged_out = self._gui_manager.app.state.validation_info is None
+
+        label = "Logged out..."
+        sensitive = False
+
+        if not logged_out:
+            with self._gui_manager.app.state.locks["live_streams"]:
+                stream_count = len(self._gui_manager.app.state.live_streams)
+            if stream_count > 0:
+                label = f"Live streams ({stream_count})"
+                sensitive = True
+            else:
+                label = "No live streams..."
+
+        self._menu_item_streams.set_label(label)
+        self._menu_item_streams.set_sensitive(sensitive)
 
     def _update_streams_menu(self) -> None:
         """Update stream list."""
@@ -78,36 +100,29 @@ class Indicator:
                 self._gui_manager.app.state.live_streams, key=lambda s: -s.viewer_count
             )
 
-        # No live streams?
-        if not streams:
-            self._menu_item_streams.set_label(Indicator.MSG_NO_LIVE_STREAMS)
-            self._menu_item_streams.set_sensitive(False)
-            return
+        # Live streams?
+        if streams:
+            # Clear menu
+            for item in menu.get_children():
+                menu.remove(item)
 
-        # Clear menu
-        for item in menu.get_children():
-            menu.remove(item)
+            # Selected streams to top
+            if settings.get_boolean("show-selected-channels-on-top"):
+                with self._gui_manager.app.state.locks["enabled_channel_ids"]:
+                    ec_ids = self._gui_manager.app.state.enabled_channel_ids.items()
+                    top_ids = [uid for uid, en in ec_ids if en == ChannelState.ENABLED]
 
-        # Selected streams to top
-        if settings.get_boolean("show-selected-channels-on-top"):
-            with self._gui_manager.app.state.locks["enabled_channel_ids"]:
-                ec_ids = self._gui_manager.app.state.enabled_channel_ids.items()
-                top_ids = [uid for uid, en in ec_ids if en == ChannelState.ENABLED]
+                top_streams = (s for s in streams if s.user_id in top_ids)
+                self._create_stream_menu_item(menu, top_streams, settings)
 
-            top_streams = (s for s in streams if s.user_id in top_ids)
-            self._create_stream_menu_item(menu, top_streams, settings)
+                menu.append(Gtk.SeparatorMenuItem.new())
 
-            menu.append(Gtk.SeparatorMenuItem.new())
+                bottom_streams = (s for s in streams if s.user_id not in top_ids)
+                self._create_stream_menu_item(menu, bottom_streams, settings)
+            else:
+                self._create_stream_menu_item(menu, streams, settings)
 
-            bottom_streams = (s for s in streams if s.user_id not in top_ids)
-            self._create_stream_menu_item(menu, bottom_streams, settings)
-        else:
-            self._create_stream_menu_item(menu, streams, settings)
-
-        # Enable streams menu items
-        self._menu_item_streams.set_label(f"Live streams ({len(streams)})")
-        self._menu_item_streams.set_sensitive(True)
-
+        self._update_menu_item_streams()
         menu.show_all()
 
     @staticmethod

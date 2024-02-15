@@ -7,6 +7,7 @@ from typing import Optional
 from urllib.parse import urlparse, urlunparse
 
 import aiofiles
+import aiofiles.os
 from aiofiles.os import path
 from aiohttp import web
 
@@ -34,37 +35,37 @@ class Auth:
         self._token_acquired_event: Optional[asyncio.Event] = None
         self._state: Optional[str] = None
 
-    async def acquire_token(self, auth_event: asyncio.Event) -> None:
+    async def acquire_token(self, auth_event: Optional[asyncio.Event]) -> None:
         """Start Twitch API user token flow."""
         self._logger.debug("acquire_token()")
 
-        self._token_acquired_event = asyncio.Event()
-        auth_url, self._state = self._build_auth_url()
+        try:
+            self._token_acquired_event = asyncio.Event() if auth_event is None else auth_event
+            auth_url, self._state = self._build_auth_url()
 
-        # Start local web server
-        web_app = web.Application()
-        routes = (
-            web.get("/", self._handle_request),
-            web.get("/success", self._handle_request_success),
-        )
-        web_app.add_routes(routes)
-        runner = web.AppRunner(web_app)
-        await runner.setup()
-        redirect_uri_parts = urlparse(TWITCH_AUTH_REDIRECT_URI)
-        site = web.TCPSite(runner, redirect_uri_parts.hostname, redirect_uri_parts.port)
-        await site.start()
-        self._logger.info("acquire_token(): Started OAuth webserver")
+            # Start local web server
+            web_app = web.Application()
+            routes = (
+                web.get("/", self._handle_request),
+                web.get("/success", self._handle_request_success),
+            )
+            web_app.add_routes(routes)
+            runner = web.AppRunner(web_app)
+            await runner.setup()
+            redirect_uri_parts = urlparse(TWITCH_AUTH_REDIRECT_URI)
+            site = web.TCPSite(runner, redirect_uri_parts.hostname, redirect_uri_parts.port)
+            await site.start()
+            self._logger.info("acquire_token(): Started OAuth webserver")
 
-        # Open Twich auth URL
-        webbrowser.open_new_tab(auth_url)
-        await self._token_acquired_event.wait()
-        self._token_acquired_event = None
-        self._state = None
-        await runner.shutdown()
-        await runner.cleanup()
-        self._logger.info("acquire_token(): Stopped OAuth webserver")
-
-        auth_event.set()
+            # Open Twich auth URL
+            webbrowser.open_new_tab(auth_url)
+            await self._token_acquired_event.wait()
+            self._token_acquired_event = None
+            self._state = None
+        finally:
+            await runner.shutdown()
+            await runner.cleanup()
+            self._logger.info("acquire_token(): Stopped OAuth webserver")
 
     async def _handle_request(self, request: web.Request) -> web.Response:
         """
@@ -116,6 +117,14 @@ class Auth:
         finally:
             if self._token_acquired_event is not None:
                 self._token_acquired_event.set()
+
+    async def logout(self) -> None:
+        """Log out user."""
+        self.token = None
+        try:
+            await aiofiles.os.unlink(AUTH_TOKEN_PATH)
+        except FileNotFoundError:
+            pass
 
     async def restore_token(self) -> None:
         """Restore auth token from config dir."""

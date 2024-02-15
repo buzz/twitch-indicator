@@ -2,7 +2,7 @@ import asyncio
 import logging
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable, Optional
+from typing import TYPE_CHECKING, Any, Iterable, Optional
 
 import aiofiles
 import aiohttp
@@ -14,7 +14,7 @@ from twitch_indicator.api.exceptions import (
     NotAuthorizedException,
     RateLimitExceededException,
 )
-from twitch_indicator.api.models import FollowedChannel, Stream, UserInfo
+from twitch_indicator.api.models import FollowedChannel, Stream, User, ValidationInfo
 from twitch_indicator.constants import (
     TWITCH_AUTH_URL,
     TWITCH_CLIENT_ID,
@@ -22,14 +22,19 @@ from twitch_indicator.constants import (
 )
 from twitch_indicator.utils import Params, build_api_url, get_cached_image_filename
 
+if TYPE_CHECKING:
+    from twitch_indicator.api.api_manager import ApiManager
+
+
 ta_followed_channels = TypeAdapter(list[FollowedChannel])
 ta_streams = TypeAdapter(list[Stream])
+ta_users = TypeAdapter(list[User])
 
 
 class TwitchApi:
     """Access Twitch API."""
 
-    def __init__(self, api_manager) -> None:
+    def __init__(self, api_manager: "ApiManager") -> None:
         self._logger = logging.getLogger(__name__)
         self._api_manager = api_manager
         self._session: Optional[aiohttp.ClientSession]
@@ -43,7 +48,7 @@ class TwitchApi:
         if self._session is not None and not self._session.closed:
             await self._session.close()
 
-    async def validate(self) -> UserInfo:
+    async def validate(self) -> ValidationInfo:
         """
         Validate token.
 
@@ -53,8 +58,7 @@ class TwitchApi:
 
         url = build_api_url("validate", url=TWITCH_AUTH_URL)
         resp = await self._get_api_response(url)
-
-        return UserInfo(**resp)
+        return ValidationInfo(**resp)
 
     async def fetch_followed_channels(self, user_id: int) -> list[FollowedChannel]:
         """
@@ -65,7 +69,6 @@ class TwitchApi:
         self._logger.debug("fetch_followed_channels()")
 
         resp = await self._get_paginated_api_response("channels/followed", {"user_id": user_id})
-
         return ta_followed_channels.validate_python(resp)
 
     async def fetch_followed_streams(self, user_id: int) -> list[Stream]:
@@ -77,15 +80,22 @@ class TwitchApi:
         self._logger.debug("fetch_followed_streams()")
 
         resp = await self._get_paginated_api_response("streams/followed", {"user_id": user_id})
-
         return ta_streams.validate_python(resp)
 
-    async def fetch_profile_pictures(self, all_user_ids: Iterable[int]) -> None:
+    async def fetch_users(self, user_ids: list[int]) -> list[User]:
         """
-        Download profile picture if current one is older than 3 days.
+        Download user info.
 
         https://dev.twitch.tv/docs/api/reference/#get-users
         """
+        self._logger.debug("fetch_users(): %s", user_ids)
+
+        url = build_api_url("users", {"id": user_ids})
+        resp = await self._get_api_response(url)
+        return ta_users.validate_python(resp["data"])
+
+    async def fetch_profile_pictures(self, all_user_ids: Iterable[int]) -> None:
+        """Download profile picture if current one is older than 3 days."""
         self._logger.debug("fetch_profile_pictures()")
 
         # Skip images newer than 3 days
@@ -114,12 +124,8 @@ class TwitchApi:
         while idx < len(user_ids):
             curr_user_ids = user_ids[idx:max]
 
-            params = {"id": [user_id for user_id in curr_user_ids]}
-            url = build_api_url("users", params)
-            resp = await self._get_api_response(url)
-
-            for d in resp["data"]:
-                profile_urls[d["id"]] = d["profile_image_url"]
+            users = await self.fetch_users(curr_user_ids)
+            profile_urls.update((u.id, u.profile_image_url) for u in users)
 
             idx += len(curr_user_ids)
             max += TWITCH_PAGE_SIZE
@@ -141,8 +147,10 @@ class TwitchApi:
             img_data = await response.read()
 
         # scale image
-        loop = self._api_manager.loop
-        icon_img_data = await loop.run_in_executor(None, self._scale_img, img_data, user_id, url)
+        if self._api_manager.loop is not None:
+            icon_img_data = await self._api_manager.loop.run_in_executor(
+                None, self._scale_img, img_data, user_id, url
+            )
 
         # Save image
         filename = get_cached_image_filename(user_id)
@@ -245,9 +253,9 @@ class TwitchApi:
                         raise RuntimeError(msg)
             except NotAuthorizedException:
                 self._logger.info("_get_api_response(): Not authorized")
-                self._api_manager.auth.token = None
+                GLib.idle_add(self._api_manager.app.logout)
                 auth_event = asyncio.Event()
-                GLib.idle_add(self._api_manager.app.not_authorized, auth_event)
+                GLib.idle_add(self._api_manager.app.gui_manager.show_auth, auth_event)
                 # Wait for auth flow to finish
                 await auth_event.wait()
             finally:

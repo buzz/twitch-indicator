@@ -1,41 +1,33 @@
 import asyncio
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, cast
 
-from gi.repository import GLib, Gtk
+from gi.repository import GdkPixbuf, GLib, Gtk
+
+from twitch_indicator.constants import TWITCH_LOGO_FILENAME
+from twitch_indicator.gui.dialogs.base import BaseDialog
+from twitch_indicator.utils import get_data_file
 
 if TYPE_CHECKING:
     from twitch_indicator.gui.gui_manager import GuiManager
 
 
-class AuthDialog:
-    def __init__(self, gui_manager: "GuiManager") -> None:
-        self._gui_manager = gui_manager
-        self._dialog: Optional[Gtk.Dialog] = None
+class AuthDialog(BaseDialog[Gtk.Dialog]):
+    def __init__(self, gui_manager: "GuiManager", auth_event: Optional[asyncio.Event]) -> None:
+        super().__init__("auth", gui_manager)
+        self._auth_event = auth_event
+        self._img_twitch = cast(Gtk.Image, self._builder.get_object("img_twitch"))
 
-    def show(self, auth_event: "asyncio.Event") -> None:
-        self._dialog = Gtk.Dialog(title="Twitch authentication")
-        self._dialog.add_button(Gtk.STOCK_QUIT, Gtk.ResponseType.CANCEL)
-        self._dialog.add_button("Authorize", Gtk.ResponseType.OK)
-        self._dialog.set_position(Gtk.WindowPosition.CENTER)
-        self._dialog.set_border_width(10)
-        self._dialog.set_resizable(False)
-
-        msg = "To use the Twitch indicator, you must authorize the app on the Twich website."
-        label = Gtk.Label(label=msg)
-        label.set_margin_bottom(16)
-        self._dialog.get_content_area().add(label)
+    def run(self) -> None:
+        filepath = get_data_file(TWITCH_LOGO_FILENAME)
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(filepath))
+        self._img_twitch.set_from_pixbuf(pixbuf)
         self._dialog.show_all()
 
         try:
             if self._dialog.run() == Gtk.ResponseType.OK:
-                self._gui_manager.app.start_auth(auth_event)
+                GLib.idle_add(self._gui_manager.app.login, self._auth_event)
             else:
                 GLib.idle_add(self._gui_manager.app.quit)
-        finally:
-            self._dialog.destroy()
-            self._dialog = None
 
-    def destroy(self) -> None:
-        """Destroy dialog window."""
-        if self._dialog is not None:
+        finally:
             self._dialog.destroy()

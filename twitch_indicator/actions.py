@@ -38,7 +38,7 @@ class Actions:
 
     def _on_quit(self, action: Gio.SimpleAction, param: None) -> None:
         """Callback for the quit action."""
-        self._app.gui_manager.app.quit()
+        self._app.quit()
 
     def _on_settings(self, action: Gio.SimpleAction, param: None) -> None:
         """Callback for the settings action."""

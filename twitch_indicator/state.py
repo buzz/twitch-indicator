@@ -2,13 +2,15 @@ import asyncio
 import inspect
 import threading
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional
 
-from twitch_indicator.api.models import FollowedChannel, Stream, UserInfo
+from twitch_indicator.api.models import FollowedChannel, Stream, User, ValidationInfo
 from twitch_indicator.utils import coro_exception_handler
 
 if TYPE_CHECKING:
     from twitch_indicator.app import TwitchIndicatorApp
+
+Handler = Callable[[Any], None | Coroutine[None, None, None]]
 
 
 class ChannelState(StrEnum):
@@ -19,7 +21,8 @@ class ChannelState(StrEnum):
 class State:
     locks: dict[str, threading.Lock] = {
         "first_run": threading.Lock(),
-        "user_info": threading.Lock(),
+        "validation_info": threading.Lock(),
+        "user": threading.Lock(),
         "followed_channels": threading.Lock(),
         "live_streams": threading.Lock(),
         "enabled_channel_ids": threading.Lock(),
@@ -27,19 +30,31 @@ class State:
 
     def __init__(self, app: "TwitchIndicatorApp") -> None:
         self._app = app
-        self._handlers: dict[str, list[Callable[[Any], None]]] = {}
+        self._handlers: dict[str, list[Handler]] = {}
 
         self.first_run = True
-        self.user_info: Optional[UserInfo] = None
+        self.validation_info: Optional[ValidationInfo] = None
+        self.user: Optional[User] = None
         self.followed_channels: list[FollowedChannel] = []
         self.live_streams: list[Stream] = []
         self.enabled_channel_ids = self._app.settings.get_enabled_channel_ids()
 
+    def reset(self):
+        """Reset user state."""
+        self.set_first_run(True)
+        self.set_validation_info(None)
+        self.set_user(None)
+        self.set_followed_channels([])
+        self.set_live_streams([])
+
     def set_first_run(self, first_run: bool) -> None:
         self._set_value("first_run", first_run)
 
-    def set_user_info(self, user_info: Optional[UserInfo]) -> None:
-        self._set_value("user_info", user_info)
+    def set_validation_info(self, validation_info: Optional[ValidationInfo]) -> None:
+        self._set_value("validation_info", validation_info)
+
+    def set_user(self, user: Optional[User]) -> None:
+        self._set_value("user", user)
 
     def set_followed_channels(self, followed_channels: list[FollowedChannel]) -> None:
         self._set_value("followed_channels", followed_channels)
@@ -50,14 +65,14 @@ class State:
     def set_enabled_channel_ids(self, enabled_channel_ids: dict[str, ChannelState]) -> None:
         self._set_value("enabled_channel_ids", enabled_channel_ids)
 
-    def add_handler(self, name: str, handler: Callable[[Any], None]) -> None:
+    def add_handler(self, name: str, handler: Handler) -> None:
         """Register event handler."""
         if name in self._handlers:
             self._handlers[name].append(handler)
         else:
             self._handlers[name] = [handler]
 
-    def remove_handler(self, name: str, handler: Callable[[Any], None]) -> None:
+    def remove_handler(self, name: str, handler: Handler) -> None:
         """Unregister event handler."""
         if name in self._handlers and handler in self._handlers[name]:
             self._handlers[name].remove(handler)

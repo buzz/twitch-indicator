@@ -1,8 +1,8 @@
 from gi.repository import GdkPixbuf, GLib
 
 from twitch_indicator.constants import (
-    FALLBACK_PROFILE_IMAGE_FILENAME,
-    FALLBACK_PROFILE_IMAGE_ICON_FILENAME,
+    TWITCH_LOGO_FILENAME,
+    TWITCH_LOGO_ICON_FILENAME,
 )
 from twitch_indicator.utils import ImageVariant, get_cached_image_filename, get_data_file
 
@@ -16,12 +16,20 @@ class CachedProfileImage(GdkPixbuf.Pixbuf):
         try:
             pixbuf = GdkPixbuf.Pixbuf.new_from_file(get_cached_image_filename(user_id, variant))
         except GLib.Error:
-            filepath = get_data_file(
-                FALLBACK_PROFILE_IMAGE_FILENAME
-                if variant == "regular"
-                else FALLBACK_PROFILE_IMAGE_ICON_FILENAME
-            )
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(filepath))
+            pixbuf = cls.new_app_image()
+
+        if pixbuf is None:
+            raise RuntimeError("Could not load pixbuf")
+
+        return pixbuf
+
+    @classmethod
+    def new_app_image(cls, variant: ImageVariant = "regular") -> GdkPixbuf.Pixbuf:
+        """Create fallback app image."""
+        filepath = get_data_file(
+            TWITCH_LOGO_FILENAME if variant == "regular" else TWITCH_LOGO_ICON_FILENAME
+        )
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(filepath))
 
         if pixbuf is None:
             raise RuntimeError("Could not load pixbuf")

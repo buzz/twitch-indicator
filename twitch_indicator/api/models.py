@@ -4,14 +4,29 @@ from typing import Literal
 from pydantic import BaseModel
 
 
-class UserInfo(BaseModel):
-    """Twitch API user info."""
+class ValidationInfo(BaseModel):
+    """Twitch API validation info."""
 
     client_id: str
     login: str
     scopes: list[str]
     user_id: int
     expires_in: int
+
+
+class User(BaseModel):
+    """Twitch API user info."""
+
+    id: int
+    login: str
+    display_name: str
+    type: Literal["admin", "global_mod", "staff", ""]
+    broadcaster_type: Literal["affiliate", "partner", ""]
+    description: str
+    profile_image_url: str
+    offline_image_url: str
+    view_count: int
+    created_at: datetime
 
 
 class FollowedChannel(BaseModel):

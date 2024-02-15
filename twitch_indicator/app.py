@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from typing import Optional
 
 from twitch_indicator.actions import Actions
 from twitch_indicator.api.api_manager import ApiManager
@@ -43,23 +44,34 @@ class TwitchIndicatorApp:
         self.api_manager.quit()
         self.gui_manager.quit()
 
-    def not_authorized(self, auth_event: asyncio.Event) -> None:
-        """Show authentication dialog."""
-        self.state.set_user_info(None)
-        self.state.set_followed_channels([])
-        self.state.set_live_streams([])
-        self.gui_manager.show_auth_dialog(auth_event)
-
-    def start_auth(self, auth_event: asyncio.Event) -> None:
+    def login(self, auth_event: Optional[asyncio.Event] = None) -> None:
         """Start auth flow."""
         if self.api_manager.loop is not None:
+            # Acquire token
             coro = self.api_manager.acquire_token(auth_event)
             fut = asyncio.run_coroutine_threadsafe(coro, self.api_manager.loop)
             try:
                 fut.result()
             except Exception as exc:
                 self._logger.exception("start_auth(): Exception raised", exc_info=exc)
-                self.quit()
+                return
+
+            # Validate token
+            coro = self.api_manager.validate()
+            fut = asyncio.run_coroutine_threadsafe(coro, self.api_manager.loop)
+            try:
+                fut.result()
+            except Exception as exc:
+                self._logger.exception("start_auth(): Exception raised", exc_info=exc)
+                return
+
+    def logout(self) -> None:
+        """Log out user."""
+        self._logger.debug("logout()")
+        self.state.reset()
+        if self.api_manager.loop is not None:
+            coro = self.api_manager.auth.logout()
+            asyncio.run_coroutine_threadsafe(coro, self.api_manager.loop)
 
     @staticmethod
     def ensure_dirs() -> None:

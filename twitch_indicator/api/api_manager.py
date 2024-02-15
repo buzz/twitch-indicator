@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING, Optional
 import aiohttp
 from gi.repository import GLib
 
+from twitch_indicator.api.models import ValidationInfo
 from twitch_indicator.api.twitch_api import TwitchApi
 from twitch_indicator.api.twitch_auth import Auth
-from twitch_indicator.constants import REFRESH_INTERVAL_LIMITS
+from twitch_indicator.constants import REFRESH_INTERVAL_LIMITS, TWITCH_VALIDATION_INTERVAL
 from twitch_indicator.utils import coro_exception_handler
 
 if TYPE_CHECKING:
@@ -24,9 +25,12 @@ class ApiManager:
         self._thread: Optional[Thread] = None
         self._refresh_interval = refresh_interval
         self._periodic_polling_task: Optional[asyncio.Task[None]] = None
+        self._validate_later_task: Optional[asyncio.Task[None]] = None
 
         self.auth = Auth()
         self.api = TwitchApi(self)
+
+        self.app.state.add_handler("validation_info", self._on_validation_info_changed)
 
     def run(self) -> None:
         """Start asyncio event loop."""
@@ -62,7 +66,7 @@ class ApiManager:
                 raise RuntimeError("Could not shut down API thread")
             self._logger.debug("quit(): API thread shut down")
 
-    async def acquire_token(self, auth_event: asyncio.Event) -> None:
+    async def acquire_token(self, auth_event: Optional[asyncio.Event]) -> None:
         """Acquire auth token."""
         await self.auth.acquire_token(auth_event)
 
@@ -73,39 +77,17 @@ class ApiManager:
         if self.loop is not None and self._refresh_interval != old_refresh_interval:
             self.loop.create_task(self._restart_periodic_polling())
 
+    async def validate(self) -> None:
+        """Validate API token."""
+        validation_info = await self.api.validate()
+        self._logger.debug("validate(): Validated: %d", validation_info.user_id)
+        GLib.idle_add(self.app.state.set_validation_info, validation_info)
+
     async def _start(self) -> None:
         """API thread main coroutine."""
         self._logger.debug("_start()")
-
-        # Restore token
         await self.auth.restore_token()
-
-        # Validate token
-        user_info = await self.api.validate()
-        self._logger.debug("run(): Validated: %d", user_info.user_id)
-        GLib.idle_add(self.app.state.set_user_info, user_info)
-
-        # Start periodic token validation
-        if self.loop is not None:
-            self.loop.create_task(self._periodic_validate())
-
-        await self._refresh_followed_channels(user_info.user_id)
-
-        # Get followed live streams
-        live_streams = await self.api.fetch_followed_streams(user_info.user_id)
-        self._logger.debug("run(): live streams: %d", len(live_streams))
-
-        # Ensure current profile pictures
-        await self.api.fetch_profile_pictures(s.user_id for s in live_streams)
-
-        # Send live stream to GUI
-        GLib.idle_add(self.app.state.set_live_streams, live_streams)
-
-        # Start stream polling cycle
-        await self._restart_periodic_polling()
-
-        # Allow notifications to happen from this point on
-        GLib.idle_add(self.app.state.set_first_run, False)
+        await self.validate()
 
     async def _stop(self) -> None:
         """Stop pending tasks and thread."""
@@ -118,6 +100,63 @@ class ApiManager:
         tasks = [t for t in asyncio.all_tasks() if t != asyncio.current_task()]
         [task.cancel() for task in tasks]
         await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def _on_validation_info_changed(self, validation_info: ValidationInfo) -> None:
+        """Continue request flow after successful validation."""
+        self._logger.debug("_on_validation_info_changed()")
+
+        if self.loop is None:
+            raise RuntimeError("No event loop")
+
+        # Cancel pending validation later
+        if self._validate_later_task is not None:
+            self._validate_later_task.cancel()
+            try:
+                await self._validate_later_task
+            except asyncio.CancelledError:
+                pass
+
+        # Cancel periodic polling
+        if self._periodic_polling_task is not None and not self._periodic_polling_task.done():
+            self._periodic_polling_task.cancel()
+            try:
+                await self._periodic_polling_task
+            except asyncio.CancelledError:
+                pass
+
+        with self.app.state.locks["validation_info"]:
+            # Nothing to do if validation failed
+            if validation_info is None:
+                return
+            user_id = validation_info.user_id
+
+        # Get logged in user info
+        (user,) = await self.api.fetch_users([user_id])
+        self._logger.debug("run(): Got logged in user: %d", user.id)
+        GLib.idle_add(self.app.state.set_user, user)
+
+        # Get followed channels
+        await self._refresh_followed_channels(user_id)
+
+        # Get followed live streams
+        live_streams = await self.api.fetch_followed_streams(user_id)
+        self._logger.debug("run(): live streams: %d", len(live_streams))
+
+        # Ensure current profile pictures
+        user_ids = [user.id] + [s.user_id for s in live_streams]
+        await self.api.fetch_profile_pictures(user_ids)
+
+        # Send live streams to GUI
+        GLib.idle_add(self.app.state.set_live_streams, live_streams)
+
+        # Start stream polling cycle
+        await self._restart_periodic_polling()
+
+        # Start next periodic token validation
+        self._validate_later_task = self.loop.create_task(self._validate_later())
+
+        # Allow notifications to happen from this point on
+        GLib.idle_add(self.app.state.set_first_run, False)
 
     async def _restart_periodic_polling(self) -> None:
         """(Re)start periodic polling."""
@@ -145,10 +184,10 @@ class ApiManager:
         while True:
             await asyncio.sleep(delay)
 
-            with self.app.state.locks["user_info"]:
-                if self.app.state.user_info is None:
-                    raise RuntimeError("Expected user_info")
-                user_id = self.app.state.user_info.user_id
+            with self.app.state.locks["validation_info"]:
+                if self.app.state.validation_info is None:
+                    raise RuntimeError("Expected validation_info")
+                user_id = self.app.state.validation_info.user_id
 
             live_streams = await self.api.fetch_followed_streams(user_id)
             msg = "_periodic_polling(): live streams: %d"
@@ -166,13 +205,11 @@ class ApiManager:
         followed_channels = await self.api.fetch_followed_channels(user_id)
         GLib.idle_add(self.app.state.set_followed_channels, followed_channels)
 
-    async def _periodic_validate(self) -> None:
+    async def _validate_later(self) -> None:
         """
-        Validate token every hour as required by Twitch API.
+        Validate token periodically as required by the Twitch API.
 
         https://dev.twitch.tv/docs/authentication/validate-tokens/
         """
-        while True:
-            await asyncio.sleep(3600)  # 1 hour
-            user_info = await self.api.validate()
-            self._logger.debug("_periodic_validate(): Validated: %d", user_info.user_id)
+        await asyncio.sleep(TWITCH_VALIDATION_INTERVAL)
+        await self.validate()
