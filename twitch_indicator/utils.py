@@ -60,9 +60,6 @@ def build_api_url(
 
 
 def coro_exception_handler(fut: Future[Any]) -> None:
-    try:
-        exc = fut.exception()
-        if exc is not None:
-            traceback.print_exception(exc)
-    except Exception:
-        pass
+    exc = fut.exception()
+    if exc is not None:
+        traceback.print_exception(exc)

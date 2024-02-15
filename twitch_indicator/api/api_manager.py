@@ -2,7 +2,7 @@ import asyncio
 import logging
 from threading import Thread
 from time import sleep
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import aiohttp
 from gi.repository import GLib
@@ -35,6 +35,7 @@ class ApiManager:
     def run(self) -> None:
         """Start asyncio event loop."""
         self.loop = asyncio.new_event_loop()
+        self.loop.set_exception_handler(self._handle_exception)
         self.api.set_session(aiohttp.ClientSession(loop=self.loop))
         self._thread = Thread(target=self.loop.run_forever)
         self._thread.start()
@@ -108,7 +109,7 @@ class ApiManager:
         if self.loop is None:
             raise RuntimeError("No event loop")
 
-        # Cancel pending validation later
+        # Cancel validation later task
         if self._validate_later_task is not None:
             self._validate_later_task.cancel()
             try:
@@ -116,7 +117,7 @@ class ApiManager:
             except asyncio.CancelledError:
                 pass
 
-        # Cancel periodic polling
+        # Cancel periodic polling task
         if self._periodic_polling_task is not None and not self._periodic_polling_task.done():
             self._periodic_polling_task.cancel()
             try:
@@ -135,19 +136,14 @@ class ApiManager:
         self._logger.debug("run(): Got logged in user: %d", user.id)
         GLib.idle_add(self.app.state.set_user, user)
 
+        # Ensure user profile pic
+        await self.api.fetch_profile_pictures((user_id,))
+
         # Get followed channels
         await self._refresh_followed_channels(user_id)
 
         # Get followed live streams
-        live_streams = await self.api.fetch_followed_streams(user_id)
-        self._logger.debug("run(): live streams: %d", len(live_streams))
-
-        # Ensure current profile pictures
-        user_ids = [user.id] + [s.user_id for s in live_streams]
-        await self.api.fetch_profile_pictures(user_ids)
-
-        # Send live streams to GUI
-        GLib.idle_add(self.app.state.set_live_streams, live_streams)
+        await self._refresh_live_streams()
 
         # Start stream polling cycle
         await self._restart_periodic_polling()
@@ -175,7 +171,7 @@ class ApiManager:
             self._periodic_polling_task = self.loop.create_task(coro)
 
     async def _periodic_polling(self) -> None:
-        """Poll followed streams periodically."""
+        """Poll followed live streams periodically."""
 
         RI_MIN = int(REFRESH_INTERVAL_LIMITS[0] * 60)
         RI_MAX = int(REFRESH_INTERVAL_LIMITS[1] * 60)
@@ -183,21 +179,25 @@ class ApiManager:
 
         while True:
             await asyncio.sleep(delay)
+            await self._refresh_live_streams()
 
-            with self.app.state.locks["validation_info"]:
-                if self.app.state.validation_info is None:
-                    raise RuntimeError("Expected validation_info")
-                user_id = self.app.state.validation_info.user_id
+    async def _refresh_live_streams(self) -> None:
+        """Refresh followed live streams."""
+        with self.app.state.locks["validation_info"]:
+            if self.app.state.validation_info is None:
+                self._logger.warning("_refresh_live_streams(): No user info set")
+                return
+            user_id = self.app.state.validation_info.user_id
 
-            live_streams = await self.api.fetch_followed_streams(user_id)
-            msg = "_periodic_polling(): live streams: %d"
-            self._logger.debug(msg, len(live_streams))
+        live_streams = await self.api.fetch_followed_streams(user_id)
+        msg = "_refresh_live_streams(): live streams: %d"
+        self._logger.debug(msg, len(live_streams))
 
-            # Ensure current profile pictures
-            await self.api.fetch_profile_pictures(s.user_id for s in live_streams)
+        # Ensure current profile pictures
+        await self.api.fetch_profile_pictures(s.user_id for s in live_streams)
 
-            # Send live stream to GUI
-            GLib.idle_add(self.app.state.set_live_streams, live_streams)
+        # Send live stream to GUI
+        GLib.idle_add(self.app.state.set_live_streams, live_streams)
 
     async def _refresh_followed_channels(self, user_id: int) -> None:
         """Refresh followed channels list."""
@@ -213,3 +213,14 @@ class ApiManager:
         """
         await asyncio.sleep(TWITCH_VALIDATION_INTERVAL)
         await self.validate()
+
+    def _handle_exception(self, loop: asyncio.AbstractEventLoop, context: dict[str, Any]):
+        """Handle exceptions created by create_task."""
+        try:
+            exc = context["exception"]
+            self._logger.exception("_exception_handler(): Caught exception:", exc_info=exc)
+        except KeyError:
+            self._logger.error(f"_exception_handler(): {context['message']}")
+
+        self._logger.info("_exception_handler(): Shutting down...")
+        GLib.idle_add(self.app.quit)
