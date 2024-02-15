@@ -7,3 +7,4 @@ Icon=twitch-indicator
 Terminal=false
 StartupNotify=false
 Categories=Network;TrayIcon;
+OnlyShowIn=GNOME;GNOME-Classic;GNOME-Flashback;KDE;LXDE;LXQt;MATE;Razor;ROX;TDE;Unity;XFCE;EDE;Cinnamon;Pantheon;DDE;Endless;Old;
