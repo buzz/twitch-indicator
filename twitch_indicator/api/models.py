@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
@@ -53,4 +53,4 @@ class Stream(BaseModel):
     started_at: datetime
     language: str
     thumbnail_url: str
-    tags: list[str]
+    tags: Optional[list[str]]  # Might be None contrary to the API doc!
