@@ -41,11 +41,8 @@ class TwitchIndicatorApp(Gtk.Application):
         self._logger.debug("do_startup()")
         Gtk.Application.do_startup(self)
         self._ensure_dirs()
-        try:
-            self.api_manager.run()
-            self.gui_manager.run()
-        except KeyboardInterrupt:
-            self.quit()
+        self.api_manager.run()
+        self.gui_manager.run()
 
     def do_activate(self):
         pass

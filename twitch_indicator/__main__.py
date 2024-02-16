@@ -16,4 +16,7 @@ from twitch_indicator.app import TwitchIndicatorApp  # noqa: E402
 def main():
     """Create and run app."""
     app = TwitchIndicatorApp()
-    app.run(sys.argv)
+    try:
+        app.run(sys.argv)
+    except KeyboardInterrupt:
+        app.quit()

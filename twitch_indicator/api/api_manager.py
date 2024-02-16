@@ -50,7 +50,7 @@ class ApiManager:
         if self.loop is not None:
             fut = asyncio.run_coroutine_threadsafe(self._stop(), self.loop)
             try:
-                fut.result(timeout=5)
+                fut.result(timeout=2)
             except TimeoutError:
                 self._logger.warning("quit(): Not all pending tasks were stopped")
             except Exception as exc:
@@ -62,7 +62,7 @@ class ApiManager:
 
         # Stop API thread
         if self._thread is not None:
-            self._thread.join(timeout=5)
+            self._thread.join(timeout=2)
             if self._thread.is_alive():
                 raise RuntimeError("Could not shut down API thread")
             self._logger.debug("quit(): API thread shut down")

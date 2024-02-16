@@ -1,6 +1,7 @@
+import asyncio
 import os
 import traceback
-from concurrent.futures import Future
+from concurrent.futures import CancelledError, Future
 from datetime import datetime, timezone
 from importlib.resources import files
 from typing import Any, Literal, Mapping, Optional, Sequence, cast
@@ -60,6 +61,9 @@ def build_api_url(
 
 
 def coro_exception_handler(fut: Future[Any]) -> None:
-    exc = fut.exception()
-    if exc is not None:
-        traceback.print_exception(exc)
+    try:
+        exc = fut.exception()
+        if exc is not None:
+            traceback.print_exception(exc)
+    except CancelledError:
+        pass
