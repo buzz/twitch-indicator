@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 class Indicator(XApp.StatusIcon):
     """App indicator."""
 
+    LOGGED_OUT_TEXT = "Logged out..."
+
     def __init__(self, gui_manager: "GuiManager") -> None:
         super().__init__()
         self._gui_manager = gui_manager
@@ -29,7 +31,13 @@ class Indicator(XApp.StatusIcon):
         self._setup_events()
 
     def _setup_events(self) -> None:
-        self._gui_manager.app.state.add_handler("validation_info", self._on_validation_info_changed)
+        self._gui_manager.app.state.add_handler("user", lambda _: self._update_tooltip())
+        self._gui_manager.app.state.add_handler(
+            "validation_info", lambda _: self._update_menu_item_streams()
+        )
+        self._gui_manager.app.state.add_handler(
+            "live_streams", lambda _: self._update_menu_item_streams()
+        )
         self._gui_manager.app.state.add_handler(
             "live_streams", lambda _: self._update_streams_menu()
         )
@@ -77,24 +85,27 @@ class Indicator(XApp.StatusIcon):
 
     def _update_tooltip(self):
         """Update indicator tooltip text."""
-        with self._gui_manager.app.state.locks["user"]:
-            if self._gui_manager.app.state.user is None:
-                tooltip = "Logged out..."
+        state = self._gui_manager.app.state
+        with state.locks["user"]:
+            if state.user is None:
+                tooltip = Indicator.LOGGED_OUT_TEXT
             else:
-                tooltip = f"Logged in as {self._gui_manager.app.state.user.login}"
+                tooltip = f"User: {state.user.display_name}"
         self.set_tooltip_text(tooltip)
 
     def _update_menu_item_streams(self) -> None:
         """Update live streams menu item label and tooltip."""
-        with self._gui_manager.app.state.locks["validation_info"]:
-            logged_out = self._gui_manager.app.state.validation_info is None
+        state = self._gui_manager.app.state
 
-        label = "Logged out..."
+        with state.locks["validation_info"]:
+            logged_out = state.validation_info is None
+
+        label = Indicator.LOGGED_OUT_TEXT
         sensitive = False
 
         if not logged_out:
-            with self._gui_manager.app.state.locks["live_streams"]:
-                stream_count = len(self._gui_manager.app.state.live_streams)
+            with state.locks["live_streams"]:
+                stream_count = len(state.live_streams)
             if stream_count > 0:
                 label = f"Live streams ({stream_count})"
                 sensitive = True
@@ -107,13 +118,12 @@ class Indicator(XApp.StatusIcon):
     def _update_streams_menu(self) -> None:
         """Update stream list."""
         settings = self._gui_manager.app.settings
+        state = self._gui_manager.app.state
         menu = self._menu_streams
 
         # Order streams by viewer count
-        with self._gui_manager.app.state.locks["live_streams"]:
-            streams = sorted(
-                self._gui_manager.app.state.live_streams, key=lambda s: -s.viewer_count
-            )
+        with state.locks["live_streams"]:
+            streams = sorted(state.live_streams, key=lambda s: -s.viewer_count)
 
         # Live streams?
         if streams:
@@ -123,8 +133,8 @@ class Indicator(XApp.StatusIcon):
 
             # Selected streams to top
             if settings.get_boolean("show-selected-channels-on-top"):
-                with self._gui_manager.app.state.locks["enabled_channel_ids"]:
-                    ec_ids = self._gui_manager.app.state.enabled_channel_ids.items()
+                with state.locks["enabled_channel_ids"]:
+                    ec_ids = state.enabled_channel_ids.items()
                     top_ids = [uid for uid, en in ec_ids if en == ChannelState.ENABLED]
 
                 top_streams = (s for s in streams if s.user_id in top_ids)
@@ -167,7 +177,3 @@ class Indicator(XApp.StatusIcon):
             menu_item.add(label)
 
             menu.append(menu_item)
-
-    def _on_validation_info_changed(self, validation_info: ValidationInfo):
-        self._update_tooltip()
-        self._update_menu_item_streams()
