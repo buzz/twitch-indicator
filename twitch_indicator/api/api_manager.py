@@ -67,6 +67,11 @@ class ApiManager:
                 raise RuntimeError("Could not shut down API thread")
             self._logger.debug("quit(): API thread shut down")
 
+    async def login(self, auth_event: Optional[asyncio.Event]) -> None:
+        """Start auth flow."""
+        await self.auth.acquire_token(auth_event)
+        await self.validate()
+
     async def acquire_token(self, auth_event: Optional[asyncio.Event]) -> None:
         """Acquire auth token."""
         await self.auth.acquire_token(auth_event)

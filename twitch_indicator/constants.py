@@ -16,6 +16,7 @@ TWITCH_CLIENT_ID = "vrulzk2tm1ozo2c1iv5a14m1ohbill"
 TWITCH_PAGE_SIZE = 100
 TWITCH_VALIDATION_INTERVAL = 3600  # 1h
 
+APP_ID = "org.buzz.twitch-indicator"
 SETTINGS_KEY = "apps.twitch-indicator"
 UNICODE_ASCII_CHARACTER_SET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 CONFIG_DIR = os.path.join(GLib.get_user_config_dir(), "twitch-indicator")

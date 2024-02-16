@@ -14,4 +14,4 @@ from twitch_indicator.app import TwitchIndicatorApp  # noqa: E402
 def main():
     """Create and run app."""
     app = TwitchIndicatorApp()
-    app.run()
+    app.run(sys.argv)
