@@ -1,40 +1,40 @@
 from typing import TYPE_CHECKING, Iterable
 
-from gi.repository import AppIndicator3, GLib, Gtk
+from gi.repository import GLib, Gtk, XApp
 
-from twitch_indicator.api.models import Stream
+from twitch_indicator.api.models import Stream, ValidationInfo
 from twitch_indicator.gui.cached_profile_image import CachedProfileImage
 from twitch_indicator.settings import Settings
 from twitch_indicator.state import ChannelState
-from twitch_indicator.utils import format_viewer_count, get_data_file
+from twitch_indicator.utils import format_viewer_count
 
 if TYPE_CHECKING:
     from twitch_indicator.gui.gui_manager import GuiManager
 
 
-class Indicator:
+class Indicator(XApp.StatusIcon):
     """App indicator."""
 
     def __init__(self, gui_manager: "GuiManager") -> None:
+        super().__init__()
         self._gui_manager = gui_manager
-        self._app_indicator = AppIndicator3.Indicator.new(
-            "Twitch indicator",
-            str(get_data_file("twitch-indicator.svg")),
-            AppIndicator3.IndicatorCategory.APPLICATION_STATUS,
-        )
-        self._app_indicator.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
+
+        self.set_icon_name("twitch-indicator")
+        self.set_label("Twitch Indicator")
 
         self._menu_streams = Gtk.Menu()
         self._menu_item_streams = Gtk.MenuItem.new()
+
         self._setup_menu()
         self._setup_events()
 
     def _setup_events(self) -> None:
-        self._gui_manager.app.state.add_handler(
-            "validation_info", lambda _: self._update_menu_item_streams()
-        )
+        self._gui_manager.app.state.add_handler("validation_info", self._on_validation_info_changed)
         self._gui_manager.app.state.add_handler(
             "live_streams", lambda _: self._update_streams_menu()
+        )
+        self._gui_manager.app.state.add_handler(
+            "enabled_channel_ids", lambda _: self._update_streams_menu()
         )
         self._gui_manager.app.settings.settings.connect(
             "changed::show-selected-channels-on-top",
@@ -62,15 +62,30 @@ class Indicator:
         menu_item_settings.set_action_name("menu.settings")
         menu_item_quit.set_action_name("menu.quit")
 
+        menu_item_settings.set_action_name("menu.settings")
+        menu_item_quit.set_action_name("menu.quit")
+
         menu.append(menu_item_settings)
         menu.append(menu_item_quit)
 
-        self._update_menu_item_streams()
+        self._menu_item_streams.set_label("No live streams...")
+        self._menu_item_streams.set_sensitive(False)
+
         menu.show_all()
-        self._app_indicator.set_menu(menu)
+        self.set_primary_menu(menu)
+        self.set_secondary_menu(menu)
+
+    def _update_tooltip(self):
+        """Update indicator tooltip text."""
+        with self._gui_manager.app.state.locks["user"]:
+            if self._gui_manager.app.state.user is None:
+                tooltip = "Logged out..."
+            else:
+                tooltip = f"Logged in as {self._gui_manager.app.state.user.login}"
+        self.set_tooltip_text(tooltip)
 
     def _update_menu_item_streams(self) -> None:
-        """Update live streams menu item label."""
+        """Update live streams menu item label and tooltip."""
         with self._gui_manager.app.state.locks["validation_info"]:
             logged_out = self._gui_manager.app.state.validation_info is None
 
@@ -152,3 +167,7 @@ class Indicator:
             menu_item.add(label)
 
             menu.append(menu_item)
+
+    def _on_validation_info_changed(self, validation_info: ValidationInfo):
+        self._update_tooltip()
+        self._update_menu_item_streams()
