@@ -7,8 +7,6 @@ VERSION = "1.7"
 
 TWITCH_WEB_URL = "https://www.twitch.tv/"
 TWITCH_API_URL = "https://api.twitch.tv/helix/"
-TWITCH_WS_URL = "wss://eventsub.wss.twitch.tv/ws"
-TWITCH_WS_KEEPALIVE_TIMEOUT = 30
 TWITCH_AUTH_URL = "https://id.twitch.tv/oauth2/"
 TWITCH_AUTH_REDIRECT_URI = "http://localhost:17563"
 TWITCH_AUTH_SCOPES = ["user:read:follows"]
