@@ -3,7 +3,7 @@ import os.path
 from gi.repository import GLib
 
 APP_NAME = "Twitch Indicator"
-VERSION = "1.6"
+VERSION = "1.7"
 
 TWITCH_WEB_URL = "https://www.twitch.tv/"
 TWITCH_API_URL = "https://api.twitch.tv/helix/"
