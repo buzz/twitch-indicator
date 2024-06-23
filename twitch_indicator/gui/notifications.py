@@ -101,4 +101,5 @@ class Notifications:
         self, notification: Notify.Notification, action: str, user_login: str
     ) -> None:
         """Callback for notification stream watch action."""
-        self._gui_manager.app.activate_action("open-stream", GLib.Variant.new_string(user_login))
+        var_user_login = GLib.Variant.new_string(user_login)
+        self._gui_manager.app.actions.action_group.activate_action("open-stream", var_user_login)
