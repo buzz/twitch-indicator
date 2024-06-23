@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class ValidationInfo(BaseModel):
@@ -45,7 +45,7 @@ class Stream(BaseModel):
     user_id: int
     user_login: str
     user_name: str
-    game_id: int
+    game_id: Optional[int]
     game_name: str
     type: Literal["live"]
     title: str
@@ -54,3 +54,14 @@ class Stream(BaseModel):
     language: str
     thumbnail_url: str
     tags: Optional[list[str]]  # Might be None contrary to the API doc!
+
+    @field_validator("game_id", mode="before")
+    @classmethod
+    def allow_empty(cls, value: str) -> Optional[int]:
+        """Map empty strings to `None`."""
+        try:
+            return int(value)
+        except ValueError:
+            if value == "":
+                return None
+            raise
