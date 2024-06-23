@@ -2,19 +2,26 @@ import asyncio
 import logging
 import re
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Iterable, Optional
+from typing import TYPE_CHECKING, Any, Iterable, Optional, TypeVar
 
 import aiofiles
 import aiohttp
 from aiofiles.os import path
 from gi.repository import GdkPixbuf, GLib
-from pydantic import TypeAdapter
+from pydantic import BaseModel
 
 from twitch_indicator.api.exceptions import (
     NotAuthorizedException,
     RateLimitExceededException,
 )
-from twitch_indicator.api.models import FollowedChannel, Stream, User, ValidationInfo
+from twitch_indicator.api.models import (
+    FollowedChannel,
+    ListData,
+    PaginatedResponse,
+    Stream,
+    User,
+    ValidationInfo,
+)
 from twitch_indicator.constants import (
     TWITCH_AUTH_URL,
     TWITCH_CLIENT_ID,
@@ -25,10 +32,7 @@ from twitch_indicator.utils import Params, build_api_url, get_cached_image_filen
 if TYPE_CHECKING:
     from twitch_indicator.api.api_manager import ApiManager
 
-
-ta_followed_channels = TypeAdapter(list[FollowedChannel])
-ta_streams = TypeAdapter(list[Stream])
-ta_users = TypeAdapter(list[User])
+ModelT = TypeVar("ModelT", bound=BaseModel)
 
 
 class TwitchApi:
@@ -57,8 +61,7 @@ class TwitchApi:
         self._logger.debug("validate()")
 
         url = build_api_url("validate", url=TWITCH_AUTH_URL)
-        resp = await self._get_api_response(url)
-        return ValidationInfo(**resp)
+        return ValidationInfo.model_validate_json(await self._get_api_response(url))
 
     async def fetch_followed_channels(self, user_id: int) -> list[FollowedChannel]:
         """
@@ -68,8 +71,8 @@ class TwitchApi:
         """
         self._logger.debug("fetch_followed_channels()")
 
-        resp = await self._get_paginated_api_response("channels/followed", {"user_id": user_id})
-        return ta_followed_channels.validate_python(resp)
+        params = {"user_id": user_id}
+        return await self._get_paginated_api_response(FollowedChannel, "channels/followed", params)
 
     async def fetch_followed_streams(self, user_id: int) -> list[Stream]:
         """
@@ -79,8 +82,8 @@ class TwitchApi:
         """
         self._logger.debug("fetch_followed_streams()")
 
-        resp = await self._get_paginated_api_response("streams/followed", {"user_id": user_id})
-        return ta_streams.validate_python(resp)
+        params = {"user_id": user_id}
+        return await self._get_paginated_api_response(Stream, "streams/followed", params)
 
     async def fetch_users(self, user_ids: list[int]) -> list[User]:
         """
@@ -91,8 +94,7 @@ class TwitchApi:
         self._logger.debug("fetch_users(): %s", user_ids)
 
         url = build_api_url("users", {"id": user_ids})
-        resp = await self._get_api_response(url)
-        return ta_users.validate_python(resp["data"])
+        return self._parse_list_data_response(User, await self._get_api_response(url))
 
     async def fetch_profile_pictures(self, all_user_ids: Iterable[int]) -> None:
         """Download profile picture if current one is older than 3 days."""
@@ -197,31 +199,29 @@ class TwitchApi:
 
         return png_data
 
-    async def _get_paginated_api_response(self, path: str, params_orig: Params) -> list[Any]:
+    async def _get_paginated_api_response(
+        self, model: type[ModelT], path: str, params: Params
+    ) -> list[ModelT]:
         """Perform a series of requests for a paginated endpoint."""
-        data: list[Any] = []
+        data: list[ModelT] = []
         cursor: Optional[str] = None
-        params: Params = {**params_orig, "first": TWITCH_PAGE_SIZE}
+        req_params: Params = {**params, "first": TWITCH_PAGE_SIZE}
 
         while True:
             if cursor is not None:
-                params = {**params, "after": cursor}
+                req_params = {**req_params, "after": cursor}
 
-            url = build_api_url(path, params)
-            resp = await self._get_api_response(url)
-            data += resp["data"]
-
-            try:
-                cursor = resp["pagination"]["cursor"]
-            except KeyError:
-                cursor = None
+            url = build_api_url(path, req_params)
+            response_text = await self._get_api_response(url)
+            page_data, cursor = self._parse_paginated_response(model, response_text)
+            data += page_data
 
             if cursor is None:
                 return data
 
     async def _get_api_response(
         self, url: str, method: str = "GET", json: Optional[dict[str, Any]] = None
-    ) -> dict[str, Any]:
+    ) -> str:
         """Perform API request."""
         if self._session is None:
             raise RuntimeError("No session object")
@@ -243,7 +243,7 @@ class TwitchApi:
                     method, url, json=json, headers=headers
                 ) as response:
                     if response.status in (200, 202, 204):
-                        return await response.json()
+                        return await response.text()
                     elif response.status == 401:
                         raise NotAuthorizedException
                     elif response.status == 429:
@@ -262,3 +262,24 @@ class TwitchApi:
                 attempt += 1
 
         raise RuntimeError("Unable to query API")
+
+    @staticmethod
+    def _parse_list_data_response(model: type[ModelT], text: str) -> list[ModelT]:
+        list_model: ListData[ModelT]
+        if not TYPE_CHECKING:
+            # Pydantic needs concrete type at runtime, but mypy wouldn't like this
+            list_model = ListData[model]
+
+        return list_model.model_validate_json(text).data
+
+    @staticmethod
+    def _parse_paginated_response(
+        model: type[ModelT], text: str
+    ) -> tuple[list[ModelT], str | None]:
+        paginated_model: PaginatedResponse[ModelT]
+        if not TYPE_CHECKING:
+            # Pydantic needs concrete type at runtime, but mypy wouldn't like this
+            paginated_model = PaginatedResponse[model]
+
+        validated_model = paginated_model.model_validate_json(text)
+        return validated_model.data, validated_model.pagination.cursor

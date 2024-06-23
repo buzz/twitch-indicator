@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Generic, Literal, Optional, TypeVar
 
 from pydantic import BaseModel, field_validator
+
+DataT = TypeVar("DataT", bound=BaseModel)
 
 
 class ValidationInfo(BaseModel):
@@ -65,3 +67,21 @@ class Stream(BaseModel):
             if value == "":
                 return None
             raise
+
+
+class ListData(BaseModel, Generic[DataT]):
+    """Twitch API response of multiple entities."""
+
+    data: list[DataT]
+
+
+class Pagination(BaseModel):
+    """Twitch API pagination."""
+
+    cursor: Optional[str] = None
+
+
+class PaginatedResponse(ListData[DataT], Generic[DataT]):
+    """Twitch API paginated data response."""
+
+    pagination: Pagination
