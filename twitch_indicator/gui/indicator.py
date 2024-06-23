@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Iterable
 
 from gi.repository import GLib, Gtk, XApp
 
-from twitch_indicator.api.models import Stream, ValidationInfo
+from twitch_indicator.api.models import Stream
 from twitch_indicator.gui.cached_profile_image import CachedProfileImage
 from twitch_indicator.settings import Settings
 from twitch_indicator.state import ChannelState

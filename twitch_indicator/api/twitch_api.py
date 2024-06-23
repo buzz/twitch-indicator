@@ -108,7 +108,7 @@ class TwitchApi:
             filename_icon = get_cached_image_filename(user_id, "icon")
             try:
                 # check regular variant
-                mtimestamp = datetime.utcfromtimestamp(await path.getmtime(filename))
+                mtimestamp = datetime.fromtimestamp(await path.getmtime(filename))
                 mtimestamp = mtimestamp.replace(tzinfo=timezone.utc)
                 if now - mtimestamp > timedelta(days=3):
                     user_ids.append(user_id)

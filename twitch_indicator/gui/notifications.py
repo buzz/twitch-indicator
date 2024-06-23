@@ -37,19 +37,18 @@ class Notifications:
             # Skip first notification run
             with app.state.locks["first_run"]:
                 first_run = app.state.first_run
-            if not first_run:
-                if app.settings.get_boolean("enable-notifications"):
-                    with app.state.locks["enabled_channel_ids"]:
-                        ec_ids = app.state.enabled_channel_ids
-                        notify_list = [
-                            deepcopy(s)
-                            for s in new_streams
-                            # stream wasn't live before?
-                            if s.user_id not in self._live_stream_user_ids
-                            # stream is in enabled list?
-                            and ec_ids.get(s.user_id, ChannelState.DISABLED) == ChannelState.ENABLED
-                        ]
-                    GLib.idle_add(self._show_notifications, notify_list)
+            if not first_run and app.settings.get_boolean("enable-notifications"):
+                with app.state.locks["enabled_channel_ids"]:
+                    ec_ids = app.state.enabled_channel_ids
+                    notify_list = [
+                        deepcopy(s)
+                        for s in new_streams
+                        # stream wasn't live before?
+                        if s.user_id not in self._live_stream_user_ids
+                        # stream is in enabled list?
+                        and ec_ids.get(s.user_id, ChannelState.DISABLED) == ChannelState.ENABLED
+                    ]
+                GLib.idle_add(self._show_notifications, notify_list)
 
             self._live_stream_user_ids = [s.user_id for s in new_streams]
 

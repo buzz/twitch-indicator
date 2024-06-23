@@ -201,7 +201,7 @@ class ApiManager:
         # Ensure current profile pictures
         await self.api.fetch_profile_pictures(s.user_id for s in live_streams)
 
-        # Send live stream to GUI
+        # Send live streams to GUI
         GLib.idle_add(self.app.state.set_live_streams, live_streams)
 
     async def _refresh_followed_channels(self, user_id: int) -> None:
