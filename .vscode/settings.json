@@ -6,6 +6,7 @@
         "editor.defaultFormatter": "charliermarsh.ruff",
         "editor.formatOnSave": true
     },
+    "editor.rulers": [100],
     "mypy.extraArguments": ["--follow-imports=normal"],
     "python.analysis.diagnosticSeverityOverrides": {
         "reportMissingModuleSource": "none"
