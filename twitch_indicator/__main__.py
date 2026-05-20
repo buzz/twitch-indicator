@@ -25,3 +25,7 @@ def main():
         app.run(sys.argv)
     except KeyboardInterrupt:
         app.quit()
+
+
+if __name__ == "__main__":
+    main()
