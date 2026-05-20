@@ -13,7 +13,7 @@ include = [
 
 [project]
 name = "twitch-indicator"
-version = "1.8"
+version = "1.9"
 description = "Twitch.tv indicator for Linux. Tracks your followed channels and notifies when they go live."
 authors = [{ name = "buzz", email = "buzz@users.noreply.github.com" }]
 license = "GPL-3.0-or-later"
