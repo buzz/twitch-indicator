@@ -1,6 +1,7 @@
+import logging
 from typing import TYPE_CHECKING, Iterable
 
-from gi.repository import GLib, Gtk, XApp
+from gi.repository import GLib, Gtk, StatusNotifier
 
 from twitch_indicator.api.models import Stream
 from twitch_indicator.gui.cached_profile_image import CachedProfileImage
@@ -11,24 +12,62 @@ from twitch_indicator.utils import format_viewer_count
 if TYPE_CHECKING:
     from twitch_indicator.gui.gui_manager import GuiManager
 
+_logger = logging.getLogger(__name__)
 
-class Indicator(XApp.StatusIcon):
-    """App indicator."""
+
+class Indicator:
+    """System tray indicator via StatusNotifier.Item (SNI)."""
 
     LOGGED_OUT_TEXT = "Logged out..."
 
     def __init__(self, gui_manager: "GuiManager") -> None:
-        super().__init__()
         self._gui_manager = gui_manager
-
-        self.set_icon_name("twitch-indicator")
-        self.set_label("Twitch Indicator")
-
+        self._instance: StatusNotifier.Item | None = None
+        self._menu = None
         self._menu_streams = Gtk.Menu()
-        self._menu_item_streams = Gtk.MenuItem.new()
+        self._menu_item_streams = Gtk.MenuItem()
 
+        self._create_sni()
         self._setup_menu()
         self._setup_events()
+
+    def _create_sni(self) -> None:
+        """Create and register the StatusNotifierItem."""
+        self._instance = StatusNotifier.Item.new_from_icon_name(
+            "Twitch Indicator",
+            StatusNotifier.Category.APPLICATION_STATUS,
+            "twitch-indicator",
+        )
+        self._instance.set_status(StatusNotifier.Status.ACTIVE)
+        self._instance.set_item_is_menu(False)
+
+        self._instance.connect("activate", self._on_activate)
+        self._instance.connect("secondary-activate", self._on_secondary_activate)
+        self._instance.connect("registration-failed", self._on_registration_failed)
+
+        self._update_tooltip()
+        self._instance.register()
+
+    # ---- SNI click callbacks ----
+
+    def _on_activate(self, item: StatusNotifier.Item, x: int, y: int) -> None:
+        """Left-click: show the same menu as right-click."""
+        if self._menu:
+            self._menu.popup(None, None, None, None, 0, Gtk.get_current_event_time())
+
+    def _on_secondary_activate(self, item: StatusNotifier.Item, x: int, y: int) -> None:
+        """Right-click: show context menu."""
+        if self._menu:
+            self._menu.popup(None, None, None, None, 0, Gtk.get_current_event_time())
+
+    def _on_registration_failed(self, item: StatusNotifier.Item, error: Exception) -> None:
+        """Handle SNI registration failure."""
+        state = item.get_state()
+        if state == StatusNotifier.State.FAILED:
+            _logger.error("Could not register StatusNotifierItem: %s", error)
+            GLib.idle_add(self._gui_manager.app.quit)
+
+    # ---- Menu setup ----
 
     def _setup_events(self) -> None:
         self._gui_manager.app.state.add_handler("user", lambda _: self._update_tooltip())
@@ -51,7 +90,6 @@ class Indicator(XApp.StatusIcon):
 
     def _setup_menu(self) -> None:
         """Setup menu."""
-
         # Root menu
         menu = Gtk.Menu()
         menu.insert_action_group("menu", self._gui_manager.app.actions.action_group)
@@ -64,34 +102,55 @@ class Indicator(XApp.StatusIcon):
         menu.append(Gtk.SeparatorMenuItem.new())
 
         # Actions menu (settings, quit)
-        menu_item_settings = Gtk.MenuItem.new_with_label("Settings")
-        menu_item_quit = Gtk.MenuItem.new_with_label("Quit")
-
+        menu_item_settings = Gtk.ImageMenuItem.new_with_label("Settings")
         menu_item_settings.set_action_name("menu.settings")
-        menu_item_quit.set_action_name("menu.quit")
-
-        menu_item_settings.set_action_name("menu.settings")
-        menu_item_quit.set_action_name("menu.quit")
-
+        menu_item_settings.set_image(Gtk.Image.new_from_icon_name("emblem-symbolic", Gtk.IconSize.MENU))
+        menu_item_settings.set_always_show_image(True)
         menu.append(menu_item_settings)
+
+        menu_item_quit = Gtk.ImageMenuItem.new_with_label("Quit")
+        menu_item_quit.set_action_name("menu.quit")
+        menu_item_quit.set_image(Gtk.Image.new_from_icon_name("window-close-symbolic", Gtk.IconSize.MENU))
+        menu_item_quit.set_always_show_image(True)
         menu.append(menu_item_quit)
 
         self._menu_item_streams.set_label("No live streams...")
         self._menu_item_streams.set_sensitive(False)
 
         menu.show_all()
-        self.set_primary_menu(menu)
-        self.set_secondary_menu(menu)
+        self._menu = menu
+
+        if self._instance:
+            self._instance.set_context_menu(menu)
+
+    # ---- Icon & tooltip updates ----
+
+    def set_icon_name(self, icon_name: str) -> None:
+        """Update the tray icon."""
+        if self._instance:
+            self._instance.set_from_icon_name(
+                StatusNotifier.Icon.STATUS_NOTIFIER_ICON,
+                icon_name,
+            )
 
     def _update_tooltip(self):
         """Update indicator tooltip text."""
+        if not self._instance:
+            return
+
         state = self._gui_manager.app.state
         with state.locks["user"]:
             if state.user is None:
                 tooltip = Indicator.LOGGED_OUT_TEXT
             else:
                 tooltip = f"User: {state.user.display_name}"
-        self.set_tooltip_text(tooltip)
+
+        self._instance.freeze_tooltip()
+        self._instance.set_tooltip_title("Twitch Indicator")
+        self._instance.set_tooltip_body(tooltip)
+        self._instance.thaw_tooltip()
+
+    # ---- Streams menu updates ----
 
     def _update_menu_item_streams(self) -> None:
         """Update live streams menu item label and tooltip."""
@@ -163,6 +222,7 @@ class Indicator(XApp.StatusIcon):
             # User profile image icon
             pixbuf = CachedProfileImage.new_from_cached(stream.user_id, "icon")
             menu_item.set_image(Gtk.Image.new_from_pixbuf(pixbuf))
+            menu_item.set_always_show_image(True)
 
             # Label
             label = Gtk.Label()

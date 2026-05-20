@@ -8,7 +8,12 @@ gi.require_version("Gio", "2.0")
 gi.require_version("GLib", "2.0")
 gi.require_version("Gtk", "3.0")
 gi.require_version("Notify", "0.7")
-gi.require_version("XApp", "1.0")
+
+try:
+    gi.require_version("StatusNotifier", "1.0")
+except (ImportError, ValueError):
+    print("Error: StatusNotifier GI overlay not found. Install libappindicator-gtk3 or python-gi-overrides-statusnotifier.", file=sys.stderr)
+    sys.exit(1)
 
 from twitch_indicator.app import TwitchIndicatorApp  # noqa: E402
 
