@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 from gi.repository import GLib, Gtk
 
@@ -19,33 +19,33 @@ class SettingsDialog(BaseDialog[Gtk.Dialog]):
         super().__init__("settings", gui_manager)
         self._logger = logging.getLogger(__name__)
 
-        self._channel_chooser_dialog: Optional[ChannelChooserDialog] = None
+        self._channel_chooser_dialog: ChannelChooserDialog | None = None
 
-        self._label_username = cast(Gtk.Label, self._builder.get_object("label_username"))
-        self._image_profile = cast(Gtk.Image, self._builder.get_object("image_profile"))
-        self._btn_loginout = cast(Gtk.Button, self._builder.get_object("btn_loginout"))
+        self._label_username = cast("Gtk.Label", self._builder.get_object("label_username"))
+        self._image_profile = cast("Gtk.Image", self._builder.get_object("image_profile"))
+        self._btn_loginout = cast("Gtk.Button", self._builder.get_object("btn_loginout"))
         self._switch_show_notifications = cast(
-            Gtk.Switch, self._builder.get_object("switch_show_notifications")
+            "Gtk.Switch", self._builder.get_object("switch_show_notifications")
         )
-        self._switch_show_game = cast(Gtk.Switch, self._builder.get_object("switch_show_game"))
+        self._switch_show_game = cast("Gtk.Switch", self._builder.get_object("switch_show_game"))
         self._switch_show_viewer_count = cast(
-            Gtk.Switch, self._builder.get_object("switch_show_viewer_count")
+            "Gtk.Switch", self._builder.get_object("switch_show_viewer_count")
         )
         self._switch_show_selected_channels_on_top = cast(
-            Gtk.Switch, self._builder.get_object("switch_show_selected_channels_on_top")
+            "Gtk.Switch", self._builder.get_object("switch_show_selected_channels_on_top")
         )
-        self._entry_open_command = cast(Gtk.Entry, self._builder.get_object("open_command"))
+        self._entry_open_command = cast("Gtk.Entry", self._builder.get_object("open_command"))
         self._scale_refresh_interval = cast(
-            Gtk.Scale, self._builder.get_object("scale_refresh_interval")
+            "Gtk.Scale", self._builder.get_object("scale_refresh_interval")
         )
         self._label_refresh_interval = cast(
-            Gtk.Label, self._builder.get_object("label_refresh_interval")
+            "Gtk.Label", self._builder.get_object("label_refresh_interval")
         )
         self._btn_channel_chooser = cast(
-            Gtk.Button, self._builder.get_object("btn_channel_chooser")
+            "Gtk.Button", self._builder.get_object("btn_channel_chooser")
         )
         self._btn_revert_open_cmd = cast(
-            Gtk.Button, self._builder.get_object("btn_revert_open_cmd")
+            "Gtk.Button", self._builder.get_object("btn_revert_open_cmd")
         )
 
         self._setup_events()
@@ -142,7 +142,7 @@ class SettingsDialog(BaseDialog[Gtk.Dialog]):
         self._channel_chooser_dialog.run()
         self._channel_chooser_dialog = None
 
-    def _update_btn_channel_chooser(self, enabled=True) -> None:
+    def _update_btn_channel_chooser(self, _enabled: bool = True) -> None:
         """Enable channel chooser button."""
         with self._gui_manager.app.state.locks["followed_channels"]:
             has_followers = bool(self._gui_manager.app.state.followed_channels)

@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from gi.repository import Gtk
 
@@ -17,8 +17,8 @@ class GuiManager:
         self.app = app
         self._indicator = Indicator(self)
         self._notifications = Notifications(self)
-        self._auth_dialog: Optional[AuthDialog] = None
-        self._settings_dialog: Optional[SettingsDialog] = None
+        self._auth_dialog: AuthDialog | None = None
+        self._settings_dialog: SettingsDialog | None = None
 
     def run(self) -> None:
         """Run Gtk main loop."""
@@ -41,7 +41,7 @@ class GuiManager:
             self._settings_dialog.run()
             self._settings_dialog = None
 
-    def show_auth(self, auth_event: Optional[asyncio.Event]) -> None:
+    def show_auth(self, auth_event: asyncio.Event | None) -> None:
         """Show authentication dialog."""
         if self._auth_dialog is not None:
             self._auth_dialog.present()

@@ -19,13 +19,13 @@ class ChannelChooserDialog(BaseDialog[Gtk.Dialog]):
         self._search_text = ""
 
         # Get widgets
-        self._label_followed = cast(Gtk.Label, self._builder.get_object("label_followed"))
-        self._label_enabled = cast(Gtk.Label, self._builder.get_object("label_enabled"))
-        self._list_view = cast(Gtk.TreeView, self._builder.get_object("list_view"))
-        self._entry_search = cast(Gtk.Entry, self._builder.get_object("entry_search"))
-        self._btn_enable_all = cast(Gtk.Button, self._builder.get_object("btn_enable_all"))
-        self._btn_enable_none = cast(Gtk.Button, self._builder.get_object("btn_enable_none"))
-        self._btn_invert = cast(Gtk.Button, self._builder.get_object("btn_invert"))
+        self._label_followed = cast("Gtk.Label", self._builder.get_object("label_followed"))
+        self._label_enabled = cast("Gtk.Label", self._builder.get_object("label_enabled"))
+        self._list_view = cast("Gtk.TreeView", self._builder.get_object("list_view"))
+        self._entry_search = cast("Gtk.Entry", self._builder.get_object("entry_search"))
+        self._btn_enable_all = cast("Gtk.Button", self._builder.get_object("btn_enable_all"))
+        self._btn_enable_none = cast("Gtk.Button", self._builder.get_object("btn_enable_none"))
+        self._btn_invert = cast("Gtk.Button", self._builder.get_object("btn_invert"))
 
         self._setup_events()
 
@@ -42,7 +42,7 @@ class ChannelChooserDialog(BaseDialog[Gtk.Dialog]):
 
         self.destroy()
 
-    def _setup_store(self):
+    def _setup_store(self) -> None:
         """Setup list model."""
         # Columns: (channel username, enabled, channel_id)
         self._store = Gtk.ListStore(str, bool, int)
@@ -82,7 +82,7 @@ class ChannelChooserDialog(BaseDialog[Gtk.Dialog]):
                     enab = ec_ids.get(channel.broadcaster_id, ChannelState.DISABLED)
                     row = (
                         channel.broadcaster_name,
-                        ChannelState.ENABLED == enab,
+                        enab == ChannelState.ENABLED,
                         channel.broadcaster_id,
                     )
                     self._store.append(row)
@@ -90,7 +90,7 @@ class ChannelChooserDialog(BaseDialog[Gtk.Dialog]):
     def _commit_model_data(self) -> None:
         """Store channel data in app state."""
         enabled_channel_ids = {
-            cast(str, row[2]): ChannelState.ENABLED if row[1] else ChannelState.DISABLED
+            cast("str", row[2]): ChannelState.ENABLED if row[1] else ChannelState.DISABLED
             for row in self._store
         }
         self._gui_manager.app.state.set_enabled_channel_ids(enabled_channel_ids)
@@ -99,7 +99,7 @@ class ChannelChooserDialog(BaseDialog[Gtk.Dialog]):
         """Update count labels."""
         self._label_enabled.set_text(f"Enabled: {self._enabled_count}/{len(self._store)}")
 
-    def _enable_sort(self, enabled=True) -> None:
+    def _enable_sort(self, enabled: bool = True) -> None:
         """Enable/disable sorting."""
         self._store.set_sort_column_id(
             (
@@ -113,7 +113,7 @@ class ChannelChooserDialog(BaseDialog[Gtk.Dialog]):
     def _sort_func(
         self, model: Gtk.TreeModel, iter1: Gtk.TreeIter, iter2: Gtk.TreeIter, _: Any
     ) -> int:
-        """Sort entries by enabled, case-insensitive alphanumeric"""
+        """Sort entries by enabled, case-insensitive alphanumeric."""
         name1 = model[iter1][0].lower()
         enabled1 = model[iter1][1]
         name2 = model[iter2][0].lower()
@@ -131,11 +131,11 @@ class ChannelChooserDialog(BaseDialog[Gtk.Dialog]):
 
         return 1
 
-    def _filter_func(self, model: Gtk.TreeModelFilter, iter: Gtk.TreeIter, _: Any) -> bool:
+    def _filter_func(self, model: Gtk.TreeModelFilter, tree_iter: Gtk.TreeIter, _: Any) -> bool:
         """Filter list by search phrase."""
         if self._search_text == "":
             return True
-        return self._search_text in model[iter][0].lower()
+        return self._search_text in model[tree_iter][0].lower()
 
     def _on_enabled_toggled(
         self, tree_view: Gtk.TreeView, path: Gtk.TreePath, column: Gtk.TreeViewColumn

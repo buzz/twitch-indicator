@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 from gi.repository import GdkPixbuf, GLib, Gtk
 
@@ -12,10 +12,10 @@ if TYPE_CHECKING:
 
 
 class AuthDialog(BaseDialog[Gtk.Dialog]):
-    def __init__(self, gui_manager: "GuiManager", auth_event: Optional[asyncio.Event]) -> None:
+    def __init__(self, gui_manager: "GuiManager", auth_event: asyncio.Event | None) -> None:
         super().__init__("auth", gui_manager)
         self._auth_event = auth_event
-        self._img_twitch = cast(Gtk.Image, self._builder.get_object("img_twitch"))
+        self._img_twitch = cast("Gtk.Image", self._builder.get_object("img_twitch"))
 
     def run(self) -> None:
         filepath = get_data_file(TWITCH_LOGO_FILENAME)

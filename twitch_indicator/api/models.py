@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Generic, Literal, Optional, TypeVar
+from typing import Literal, TypeVar
 
 from pydantic import BaseModel, field_validator
 
@@ -47,7 +47,7 @@ class Stream(BaseModel):
     user_id: int
     user_login: str
     user_name: str
-    game_id: Optional[int]
+    game_id: int | None
     game_name: str
     type: Literal["live"]
     title: str
@@ -55,11 +55,11 @@ class Stream(BaseModel):
     started_at: datetime
     language: str
     thumbnail_url: str
-    tags: Optional[list[str]]  # Might be None contrary to the API doc!
+    tags: list[str] | None  # Might be None contrary to the API doc!
 
     @field_validator("game_id", mode="before")
     @classmethod
-    def allow_empty(cls, value: str) -> Optional[int]:
+    def allow_empty(cls, value: str) -> int | None:
         """Map empty strings to `None`."""
         try:
             return int(value)
@@ -69,7 +69,7 @@ class Stream(BaseModel):
             raise
 
 
-class ListData(BaseModel, Generic[DataT]):
+class ListData[DataT: BaseModel](BaseModel):
     """Twitch API response of multiple entities."""
 
     data: list[DataT]
@@ -78,10 +78,10 @@ class ListData(BaseModel, Generic[DataT]):
 class Pagination(BaseModel):
     """Twitch API pagination."""
 
-    cursor: Optional[str] = None
+    cursor: str | None = None
 
 
-class PaginatedResponse(ListData[DataT], Generic[DataT]):
+class PaginatedResponse[DataT: BaseModel](ListData[DataT]):
     """Twitch API paginated data response."""
 
     pagination: Pagination

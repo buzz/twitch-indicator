@@ -1,7 +1,8 @@
 import logging
-from typing import TYPE_CHECKING, Iterable
+from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
-from gi.repository import GLib, Gtk, StatusNotifier
+from gi.repository import GLib, Gtk, StatusNotifier  # ty: ignore[unresolved-import]
 
 from twitch_indicator.api.models import Stream
 from twitch_indicator.gui.cached_profile_image import CachedProfileImage
@@ -89,13 +90,17 @@ class Indicator:
         # Actions menu (settings, quit)
         menu_item_settings = Gtk.ImageMenuItem.new_with_label("Settings")
         menu_item_settings.set_action_name("menu.settings")
-        menu_item_settings.set_image(Gtk.Image.new_from_icon_name("emblem-symbolic", Gtk.IconSize.MENU))
+        menu_item_settings.set_image(
+            Gtk.Image.new_from_icon_name("emblem-symbolic", Gtk.IconSize.MENU)  # ty: ignore[too-many-positional-arguments]
+        )
         menu_item_settings.set_always_show_image(True)
         menu.append(menu_item_settings)
 
         menu_item_quit = Gtk.ImageMenuItem.new_with_label("Quit")
         menu_item_quit.set_action_name("menu.quit")
-        menu_item_quit.set_image(Gtk.Image.new_from_icon_name("window-close-symbolic", Gtk.IconSize.MENU))
+        menu_item_quit.set_image(
+            Gtk.Image.new_from_icon_name("window-close-symbolic", Gtk.IconSize.MENU)  # ty: ignore[too-many-positional-arguments]
+        )
         menu_item_quit.set_always_show_image(True)
         menu.append(menu_item_quit)
 
@@ -118,7 +123,7 @@ class Indicator:
                 icon_name,
             )
 
-    def _update_tooltip(self):
+    def _update_tooltip(self) -> None:
         """Update indicator tooltip text."""
         if not self._instance:
             return
@@ -199,7 +204,6 @@ class Indicator:
         menu: Gtk.Menu, streams: Iterable[Stream], settings: Settings
     ) -> None:
         """Create menu item for stream."""
-
         for stream in streams:
             menu_item = Gtk.ImageMenuItem()
             menu_item.set_detailed_action_name(f"menu.open-stream::{stream.user_login}")

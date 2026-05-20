@@ -1,8 +1,9 @@
 import asyncio
 import inspect
 import threading
+from collections.abc import Callable, Coroutine
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, Optional
+from typing import TYPE_CHECKING, Any
 
 from twitch_indicator.api.models import FollowedChannel, Stream, User, ValidationInfo
 from twitch_indicator.utils import coro_exception_handler
@@ -33,13 +34,13 @@ class State:
         self._handlers: dict[str, list[Handler]] = {}
 
         self.first_run = True
-        self.validation_info: Optional[ValidationInfo] = None
-        self.user: Optional[User] = None
+        self.validation_info: ValidationInfo | None = None
+        self.user: User | None = None
         self.followed_channels: list[FollowedChannel] = []
         self.live_streams: list[Stream] = []
         self.enabled_channel_ids = self._app.settings.get_enabled_channel_ids()
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset user state."""
         self.set_first_run(True)
         self.set_validation_info(None)
@@ -50,10 +51,10 @@ class State:
     def set_first_run(self, first_run: bool) -> None:
         self._set_value("first_run", first_run)
 
-    def set_validation_info(self, validation_info: Optional[ValidationInfo]) -> None:
+    def set_validation_info(self, validation_info: ValidationInfo | None) -> None:
         self._set_value("validation_info", validation_info)
 
-    def set_user(self, user: Optional[User]) -> None:
+    def set_user(self, user: User | None) -> None:
         self._set_value("user", user)
 
     def set_followed_channels(self, followed_channels: list[FollowedChannel]) -> None:

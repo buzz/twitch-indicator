@@ -1,5 +1,5 @@
 import abc
-from typing import TYPE_CHECKING, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, TypeVar, cast
 
 from gi.repository import Gtk
 
@@ -11,12 +11,12 @@ if TYPE_CHECKING:
 _T = TypeVar("_T", bound=Gtk.Dialog)
 
 
-class BaseDialog(abc.ABC, Generic[_T]):
+class BaseDialog[T: Gtk.Dialog](abc.ABC):
     def __init__(self, name: str, gui_manager: "GuiManager") -> None:
         self._gui_manager = gui_manager
         self._builder = Gtk.Builder()
         self._builder.add_from_file(str(get_data_file(f"{name}.glade")))
-        self._dialog = cast(_T, self._builder.get_object("dialog"))
+        self._dialog = cast("_T", self._builder.get_object("dialog"))
 
     def run(self) -> None:
         """Run dialog."""

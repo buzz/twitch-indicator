@@ -1,7 +1,8 @@
 import logging
 import subprocess
 import webbrowser
-from typing import TYPE_CHECKING, Callable, Optional, Union
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from gi.repository import Gio, GLib
 
@@ -11,21 +12,20 @@ if TYPE_CHECKING:
     from twitch_indicator.app import TwitchIndicatorApp
 
 
-ActionCallback = Union[
-    Callable[[Gio.SimpleAction, None], None],
-    Callable[[Gio.SimpleAction, GLib.Variant], None],
-]
-ActionDef = tuple[str, Optional[GLib.VariantType], ActionCallback]
+ActionCallback = (
+    Callable[[Gio.SimpleAction, None], None] | Callable[[Gio.SimpleAction, GLib.Variant], None]
+)
+ActionDef = tuple[str, GLib.VariantType | None, ActionCallback]
 
 
 class Actions:
     def __init__(self, app: "TwitchIndicatorApp") -> None:
         self._logger = logging.getLogger(__name__)
-        self._app: "TwitchIndicatorApp" = app
+        self._app: TwitchIndicatorApp = app
         self.action_group = Gio.SimpleActionGroup()
         self._setup_actions()
 
-    def _setup_actions(self):
+    def _setup_actions(self) -> None:
         actions: tuple[ActionDef, ...] = (
             ("quit", None, self._on_quit),
             ("settings", None, self._on_settings),
@@ -45,8 +45,7 @@ class Actions:
         self._app.gui_manager.show_settings()
 
     def _on_open_stream(self, action: Gio.SimpleAction, param: GLib.Variant) -> None:
-        """
-        Callback for the open-stream action.
+        """Callback for the open-stream action.
 
         Open URL in browser using either default webbrowser or custom command.
         """

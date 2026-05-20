@@ -1,8 +1,9 @@
 import asyncio
+import contextlib
 import logging
 from threading import Thread
 from time import sleep
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 from gi.repository import GLib
@@ -21,11 +22,11 @@ class ApiManager:
     def __init__(self, app: "TwitchIndicatorApp", refresh_interval: float) -> None:
         self._logger = logging.getLogger(__name__)
         self.app = app
-        self.loop: Optional[asyncio.AbstractEventLoop] = None
-        self._thread: Optional[Thread] = None
+        self.loop: asyncio.AbstractEventLoop | None = None
+        self._thread: Thread | None = None
         self._refresh_interval = refresh_interval
-        self._periodic_polling_task: Optional[asyncio.Task[None]] = None
-        self._validate_later_task: Optional[asyncio.Task[None]] = None
+        self._periodic_polling_task: asyncio.Task[None] | None = None
+        self._validate_later_task: asyncio.Task[None] | None = None
 
         self.auth = Auth()
         self.api = TwitchApi(self)
@@ -67,12 +68,12 @@ class ApiManager:
                 raise RuntimeError("Could not shut down API thread")
             self._logger.debug("quit(): API thread shut down")
 
-    async def login(self, auth_event: Optional[asyncio.Event]) -> None:
+    async def login(self, auth_event: asyncio.Event | None) -> None:
         """Start auth flow."""
         await self.auth.acquire_token(auth_event)
         await self.validate()
 
-    async def acquire_token(self, auth_event: Optional[asyncio.Event]) -> None:
+    async def acquire_token(self, auth_event: asyncio.Event | None) -> None:
         """Acquire auth token."""
         await self.auth.acquire_token(auth_event)
 
@@ -117,18 +118,14 @@ class ApiManager:
         # Cancel validation later task
         if self._validate_later_task is not None:
             self._validate_later_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._validate_later_task
-            except asyncio.CancelledError:
-                pass
 
         # Cancel periodic polling task
         if self._periodic_polling_task is not None and not self._periodic_polling_task.done():
             self._periodic_polling_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._periodic_polling_task
-            except asyncio.CancelledError:
-                pass
 
         with self.app.state.locks["validation_info"]:
             # Nothing to do if validation failed
@@ -166,10 +163,8 @@ class ApiManager:
         # Cancel old task
         if self._periodic_polling_task is not None and not self._periodic_polling_task.done():
             self._periodic_polling_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._periodic_polling_task
-            except asyncio.CancelledError:
-                pass
 
         if self.loop is not None:
             coro = self._periodic_polling()
@@ -177,7 +172,6 @@ class ApiManager:
 
     async def _periodic_polling(self) -> None:
         """Poll followed live streams periodically."""
-
         RI_MIN = int(REFRESH_INTERVAL_LIMITS[0] * 60)
         RI_MAX = int(REFRESH_INTERVAL_LIMITS[1] * 60)
         delay = max(min(int(self._refresh_interval * 60), RI_MAX), RI_MIN)
@@ -211,15 +205,14 @@ class ApiManager:
         GLib.idle_add(self.app.state.set_followed_channels, followed_channels)
 
     async def _validate_later(self) -> None:
-        """
-        Validate token periodically as required by the Twitch API.
+        """Validate token periodically as required by the Twitch API.
 
         https://dev.twitch.tv/docs/authentication/validate-tokens/
         """
         await asyncio.sleep(TWITCH_VALIDATION_INTERVAL)
         await self.validate()
 
-    def _handle_exception(self, loop: asyncio.AbstractEventLoop, context: dict[str, Any]):
+    def _handle_exception(self, loop: asyncio.AbstractEventLoop, context: dict[str, Any]) -> None:
         """Handle exceptions created by create_task."""
         try:
             exc = context["exception"]

@@ -1,8 +1,9 @@
 import asyncio
 import logging
 import re
-from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Iterable, Optional, TypeVar
+from collections.abc import Iterable
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import aiofiles
 import aiohttp
@@ -41,7 +42,7 @@ class TwitchApi:
     def __init__(self, api_manager: "ApiManager") -> None:
         self._logger = logging.getLogger(__name__)
         self._api_manager = api_manager
-        self._session: Optional[aiohttp.ClientSession]
+        self._session: aiohttp.ClientSession | None
 
     def set_session(self, session: aiohttp.ClientSession) -> None:
         """Set client session."""
@@ -53,8 +54,7 @@ class TwitchApi:
             await self._session.close()
 
     async def validate(self) -> ValidationInfo:
-        """
-        Validate token.
+        """Validate token.
 
         https://dev.twitch.tv/docs/authentication/validate-tokens/
         """
@@ -64,8 +64,7 @@ class TwitchApi:
         return ValidationInfo.model_validate_json(await self._get_api_response(url))
 
     async def fetch_followed_channels(self, user_id: int) -> list[FollowedChannel]:
-        """
-        Fetch followed channels and return as list of dictionaries.
+        """Fetch followed channels and return as list of dictionaries.
 
         https://dev.twitch.tv/docs/api/reference/#get-followed-channels
         """
@@ -75,8 +74,7 @@ class TwitchApi:
         return await self._get_paginated_api_response(FollowedChannel, "channels/followed", params)
 
     async def fetch_followed_streams(self, user_id: int) -> list[Stream]:
-        """
-        Fetch live streams followed by user_id and return as list of dictionaries.
+        """Fetch live streams followed by user_id and return as list of dictionaries.
 
         https://dev.twitch.tv/docs/api/reference/#get-followed-streams
         """
@@ -86,8 +84,7 @@ class TwitchApi:
         return await self._get_paginated_api_response(Stream, "streams/followed", params)
 
     async def fetch_users(self, user_ids: list[int]) -> list[User]:
-        """
-        Download user info.
+        """Download user info.
 
         https://dev.twitch.tv/docs/api/reference/#get-users
         """
@@ -102,14 +99,14 @@ class TwitchApi:
 
         # Skip images newer than 3 days
         user_ids: list[int] = []
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for user_id in all_user_ids:
             filename = get_cached_image_filename(user_id)
             filename_icon = get_cached_image_filename(user_id, "icon")
             try:
                 # check regular variant
                 mtimestamp = datetime.fromtimestamp(await path.getmtime(filename))
-                mtimestamp = mtimestamp.replace(tzinfo=timezone.utc)
+                mtimestamp = mtimestamp.replace(tzinfo=UTC)
                 if now - mtimestamp > timedelta(days=3):
                     user_ids.append(user_id)
 
@@ -122,15 +119,15 @@ class TwitchApi:
         # Fetch profile image URLs
         profile_urls: dict[int, str] = {}
         idx = 0
-        max = TWITCH_PAGE_SIZE
+        page_end = TWITCH_PAGE_SIZE
         while idx < len(user_ids):
-            curr_user_ids = user_ids[idx:max]
+            curr_user_ids = user_ids[idx:page_end]
 
             users = await self.fetch_users(curr_user_ids)
             profile_urls.update((u.id, u.profile_image_url) for u in users)
 
             idx += len(curr_user_ids)
-            max += TWITCH_PAGE_SIZE
+            page_end += TWITCH_PAGE_SIZE
 
         await asyncio.gather(
             *(self._process_profile_url(user_id, url) for user_id, url in profile_urls.items())
@@ -176,7 +173,10 @@ class TwitchApi:
             msg = f"_process_profile_url(): Failed to parse image: url={url} user_id={user_id}"
             raise RuntimeError(msg)
         if not loader.close():
-            msg = f"_process_profile_url(): Failed to finalize image loader: url={url} user_id={user_id}"
+            msg = (
+                f"_process_profile_url(): Failed to finalize image loader: "
+                f"url={url} user_id={user_id}"
+            )
             raise RuntimeError(msg)
         pixbuf = loader.get_pixbuf()
         if pixbuf is None:
@@ -189,12 +189,15 @@ class TwitchApi:
         pixbuf_icon = pixbuf.scale_simple(32, 32, GdkPixbuf.InterpType.BILINEAR)
         if pixbuf_icon is None:
             msg = f"_process_profile_url(): Failed to scale pixbuf: url={url} user_id={user_id}"
-            raise RuntimeError()
+            raise RuntimeError
 
         # Create PNG data
         res, png_data = pixbuf_icon.save_to_bufferv("png")
         if not res:
-            msg = f"_process_profile_url(): Failed to create PNG from pixbuf: url={url} user_id={user_id}"
+            msg = (
+                f"_process_profile_url(): Failed to create PNG from pixbuf: "
+                f"url={url} user_id={user_id}"
+            )
             raise RuntimeError(msg)
 
         return png_data
@@ -204,7 +207,7 @@ class TwitchApi:
     ) -> list[ModelT]:
         """Perform a series of requests for a paginated endpoint."""
         data: list[ModelT] = []
-        cursor: Optional[str] = None
+        cursor: str | None = None
         req_params: Params = {**params, "first": TWITCH_PAGE_SIZE}
 
         while True:
@@ -220,7 +223,7 @@ class TwitchApi:
                 return data
 
     async def _get_api_response(
-        self, url: str, method: str = "GET", json: Optional[dict[str, Any]] = None
+        self, url: str, method: str = "GET", json: dict[str, Any] | None = None
     ) -> str:
         """Perform API request."""
         if self._session is None:
@@ -231,7 +234,7 @@ class TwitchApi:
         while attempt < attempts:
             try:
                 self._logger.debug(
-                    f"get_api_response(): Attempt {attempt+1}/{attempts} {method} {url}"
+                    f"get_api_response(): Attempt {attempt + 1}/{attempts} {method} {url}"
                 )
                 if self._api_manager.auth.token is None:
                     raise NotAuthorizedException
@@ -244,13 +247,12 @@ class TwitchApi:
                 ) as response:
                     if response.status in (200, 202, 204):
                         return await response.text()
-                    elif response.status == 401:
+                    if response.status == 401:
                         raise NotAuthorizedException
-                    elif response.status == 429:
+                    if response.status == 429:
                         raise RateLimitExceededException
-                    else:
-                        msg = f"Unhandled status code: {response.status}"
-                        raise RuntimeError(msg)
+                    msg = f"Unhandled status code: {response.status}"
+                    raise RuntimeError(msg)
             except NotAuthorizedException:
                 self._logger.info("_get_api_response(): Not authorized")
                 GLib.idle_add(self._api_manager.app.logout)
@@ -265,21 +267,15 @@ class TwitchApi:
 
     @staticmethod
     def _parse_list_data_response(model: type[ModelT], text: str) -> list[ModelT]:
-        list_model: ListData[ModelT]
-        if not TYPE_CHECKING:
-            # Pydantic needs concrete type at runtime, but mypy wouldn't like this
-            list_model = ListData[model]
-
+        # Pydantic needs concrete type at runtime
+        list_model = ListData[model]  # ty: ignore[invalid-type-form]
         return list_model.model_validate_json(text).data
 
     @staticmethod
     def _parse_paginated_response(
         model: type[ModelT], text: str
     ) -> tuple[list[ModelT], str | None]:
-        paginated_model: PaginatedResponse[ModelT]
-        if not TYPE_CHECKING:
-            # Pydantic needs concrete type at runtime, but mypy wouldn't like this
-            paginated_model = PaginatedResponse[model]
-
+        # Pydantic needs concrete type at runtime
+        paginated_model = PaginatedResponse[model]  # ty: ignore[invalid-type-form]
         validated_model = paginated_model.model_validate_json(text)
         return validated_model.data, validated_model.pagination.cursor

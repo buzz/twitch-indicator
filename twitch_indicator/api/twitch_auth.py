@@ -1,9 +1,9 @@
 import asyncio
+import contextlib
 import logging
 import webbrowser
 from os import chmod
 from random import SystemRandom
-from typing import Optional
 from urllib.parse import urlparse, urlunparse
 
 import aiofiles
@@ -23,19 +23,18 @@ from twitch_indicator.utils import build_api_url, get_data_file
 
 
 class Auth:
-    """
-    Handle API authentication using implicit grant flow.
+    """Handle API authentication using implicit grant flow.
 
     https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#implicit-grant-flow
     """
 
     def __init__(self) -> None:
         self._logger = logging.getLogger(__name__)
-        self.token: Optional[str] = None
-        self._token_acquired_event: Optional[asyncio.Event] = None
-        self._state: Optional[str] = None
+        self.token: str | None = None
+        self._token_acquired_event: asyncio.Event | None = None
+        self._state: str | None = None
 
-    async def acquire_token(self, auth_event: Optional[asyncio.Event]) -> None:
+    async def acquire_token(self, auth_event: asyncio.Event | None) -> None:
         """Start Twitch API user token flow."""
         self._logger.debug("acquire_token()")
 
@@ -68,8 +67,7 @@ class Auth:
             self._logger.info("acquire_token(): Stopped OAuth webserver")
 
     async def _handle_request(self, request: web.Request) -> web.Response:
-        """
-        Twitch auth redirect endpoint.
+        """Twitch auth redirect endpoint.
 
         Parse hash parameters and redirect to success page using JavaScript.
         The parameters are added as query string.
@@ -81,14 +79,13 @@ class Auth:
         success_url = urlunparse(success_url_parts)
 
         filepath = get_data_file("auth_response.html")
-        async with aiofiles.open(filepath, "r", encoding="UTF-8") as f:
+        async with aiofiles.open(filepath, encoding="UTF-8") as f:
             text = (await f.read()).replace("__SUCCESS_URL__", success_url)
 
         return web.Response(text=text, content_type="text/html")
 
     async def _handle_request_success(self, request: web.Request) -> web.Response:
-        """
-        Twitch auth success endpoint.
+        """Twitch auth success endpoint.
 
         Parse query parameters and show user success message.
         """
@@ -110,7 +107,7 @@ class Auth:
             await self._store_token(self.token)
 
             filepath = get_data_file("auth_success_response.html")
-            async with aiofiles.open(filepath, "r", encoding="UTF-8") as f:
+            async with aiofiles.open(filepath, encoding="UTF-8") as f:
                 return web.Response(text=await f.read(), content_type="text/html")
         except ValueError:
             return web.Response(status=401)
@@ -121,15 +118,13 @@ class Auth:
     async def logout(self) -> None:
         """Log out user."""
         self.token = None
-        try:
+        with contextlib.suppress(FileNotFoundError):
             await aiofiles.os.unlink(AUTH_TOKEN_PATH)
-        except FileNotFoundError:
-            pass
 
     async def restore_token(self) -> None:
         """Restore auth token from config dir."""
         if await path.isfile(AUTH_TOKEN_PATH):
-            async with aiofiles.open(AUTH_TOKEN_PATH, "r", encoding="UTF-8") as f:
+            async with aiofiles.open(AUTH_TOKEN_PATH, encoding="UTF-8") as f:
                 self.token = await f.read()
 
     async def _store_token(self, token: str) -> None:

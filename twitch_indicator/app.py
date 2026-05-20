@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-from typing import Optional
 
 from gi.repository import Gio, Gtk
 
@@ -44,7 +43,7 @@ class TwitchIndicatorApp(Gtk.Application):
         self.api_manager.run()
         self.gui_manager.run()
 
-    def do_activate(self):
+    def do_activate(self) -> None:
         pass
 
     def quit(self) -> None:
@@ -53,7 +52,7 @@ class TwitchIndicatorApp(Gtk.Application):
         self.api_manager.quit()
         self.gui_manager.quit()
 
-    def login(self, auth_event: Optional[asyncio.Event] = None) -> None:
+    def login(self, auth_event: asyncio.Event | None = None) -> None:
         """Start auth flow."""
         if self.api_manager.loop is not None:
             # Acquire token

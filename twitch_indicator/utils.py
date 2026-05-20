@@ -1,9 +1,10 @@
 import os
 import traceback
+from collections.abc import Mapping, Sequence
 from concurrent.futures import CancelledError, Future
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from importlib.resources import files
-from typing import Any, Literal, Mapping, Optional, Sequence, cast
+from typing import Any, Literal, cast
 from urllib.parse import urlencode, urlparse, urlunparse
 
 from twitch_indicator.constants import CACHE_DIR, TWITCH_API_URL, TWITCH_WEB_URL
@@ -17,7 +18,7 @@ ImageVariant = Literal["regular", "icon"]
 
 def get_data_file(filename: str) -> os.PathLike[str]:
     """Get resource data file."""
-    return cast(os.PathLike[str], files("twitch_indicator.data").joinpath(filename))
+    return cast("os.PathLike[str]", files("twitch_indicator.data").joinpath(filename))
 
 
 def get_cached_image_filename(user_id: int, variant: ImageVariant = "regular") -> str:
@@ -36,7 +37,7 @@ def format_viewer_count(count: int) -> str:
 def parse_rfc3339_timestamp(rfc3339_timestamp: str) -> datetime:
     """Parse a Twitch API timestamp which uses nanoseconds instead of milliseconds."""
     timestamp = datetime.strptime(rfc3339_timestamp[:26], "%Y-%m-%dT%H:%M:%S.%f")
-    return timestamp.replace(tzinfo=timezone.utc)
+    return timestamp.replace(tzinfo=UTC)
 
 
 def build_stream_url(user_login: str) -> str:
@@ -46,8 +47,8 @@ def build_stream_url(user_login: str) -> str:
 
 
 def build_api_url(
-    path_append: Optional[str] = None,
-    params: Optional[Params] = None,
+    path_append: str | None = None,
+    params: Params | None = None,
     url: str = TWITCH_API_URL,
 ) -> str:
     """Build a Twitch API URL."""
