@@ -39,26 +39,11 @@ class Indicator:
             "twitch-indicator",
         )
         self._instance.set_status(StatusNotifier.Status.ACTIVE)
-        self._instance.set_item_is_menu(False)
-
-        self._instance.connect("activate", self._on_activate)
-        self._instance.connect("secondary-activate", self._on_secondary_activate)
+        self._instance.set_item_is_menu(True)
         self._instance.connect("registration-failed", self._on_registration_failed)
 
         self._update_tooltip()
         self._instance.register()
-
-    # ---- SNI click callbacks ----
-
-    def _on_activate(self, item: StatusNotifier.Item, x: int, y: int) -> None:
-        """Left-click: show the same menu as right-click."""
-        if self._menu:
-            self._menu.popup(None, None, None, None, 0, Gtk.get_current_event_time())
-
-    def _on_secondary_activate(self, item: StatusNotifier.Item, x: int, y: int) -> None:
-        """Right-click: show context menu."""
-        if self._menu:
-            self._menu.popup(None, None, None, None, 0, Gtk.get_current_event_time())
 
     def _on_registration_failed(self, item: StatusNotifier.Item, error: Exception) -> None:
         """Handle SNI registration failure."""
